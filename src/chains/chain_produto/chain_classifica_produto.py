@@ -4,7 +4,6 @@ from pydantic import BaseModel, Field
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
-from langchain_core.prompts.chat import SystemMessagePromptTemplate, HumanMessagePromptTemplate
 
 # Carregar as chaves APIs presentes no arquivo .env
 load_dotenv()
@@ -16,12 +15,9 @@ model = ChatGoogleGenerativeAI(model='gemini-2.5-flash')
 # --------------------------------------------------------------------------------
 # Criando o classificador da pergunta de entrada do usuário:
 class ClassificaEntrada(BaseModel):
-    opcao: int = Field(description="Defina 1 se a pergunta do usuário solicitar informações ou orientações sobre a loja. \
-Defina 2  se for saudações ou conversa normal de um cliente.\
-Defina 3 se for solicitação de informação sobre produto\
-Defina 4 se estiver pedindo uma imagem\
-Defina 5 se for qualquer coisa relacionada a pagamento\
-Defina 6 se for qualquer outra coisa não relacionada anteriormente")
+    opcao: int = Field(description="Defina 1 se a cliente ainda não falou qual tipo de produto ele quer, por exemplo: Tamanho, cor, categoria, finalidade, etc. \
+Defina 2 se a cliente definiu algum tipo de característica do produto que a interessa, que ela ainda não tenha dito antes.\
+Defina 3 se a cliente já definiu algum tipo de característica do produto que a interessa, mas na última mensagem não deu nenhuma característica nova.")
 
 # Criando o parser estruturado
 parser_classifica = PydanticOutputParser(pydantic_object=ClassificaEntrada)
@@ -42,12 +38,10 @@ Pergunta Usuário: {input}
 """
 
 rota_prompt_template = ChatPromptTemplate.from_messages([
-    SystemMessagePromptTemplate.from_template(sys_prompt_rota),
-    HumanMessagePromptTemplate.from_template("{input}")
+    ('system', sys_prompt_rota),
+    ('human', "{input}")
 ]).partial(
     format_instructions=parser_classifica.get_format_instructions()
 )
 
-
-# Criando a Chain que vai classificar a entrada do usuário:
 chain_de_roteamento = rota_prompt_template | model | parser_classifica

@@ -1,12 +1,13 @@
 from operator import itemgetter
-
-from memoria import get_session_history, trimmer
-from chains.meu_chain_classifica import chain_de_roteamento
+from src.memoria import get_session_history, trimmer
+from src.chains.chains_first.meu_chain_classifica import chain_de_roteamento
 
 from langchain_core.runnables import RunnableLambda, RunnableParallel, RunnablePassthrough
 from langchain_core.runnables.history import RunnableWithMessageHistory
-from chains import chain_loja, chain_conversa, chain_produto, chain_imagem, chain_nao_sabe_responder, chain_pagamento
+from src.chains.chains_first import chain_loja, chain_conversa, chain_imagem, chain_nao_sabe_responder, chain_pagamento
+from src.chains.chain_produto import roteamento_produto
 import os
+from loguru import logger
 
 EVOLUTION_TEXT_URL= os.getenv('EVOLUTION_TEXT_URL')
 EVOLUTION_MEDIA_URL= os.getenv('EVOLUTION_MEDIA_URL')
@@ -17,26 +18,26 @@ def executa_roteamento(entrada: dict):
 
     entrada["resposta_pydantic"].opcao
     if entrada["resposta_pydantic"].opcao == 1:
-        print(f">> Opção classe Pydantic: {entrada['resposta_pydantic'].opcao} (Informações ou orientações sobre a loja)")
+        logger.info(f">> Opção classe Pydantic: {entrada['resposta_pydantic'].opcao} (Informações ou orientações sobre a loja)")
         return RunnableLambda(lambda x: {"input": x['input'], "history": x['history']}) | chain_loja.chain
     elif entrada["resposta_pydantic"].opcao == 2:
-        print(f">> Opção classe Pydantic: {entrada['resposta_pydantic'].opcao} (Conversa normal)")
+        logger.info(f">> Opção classe Pydantic: {entrada['resposta_pydantic'].opcao} (Conversa normal)")
         return RunnableLambda(lambda x: {"input": x['input'], "history": x['history']}) | chain_conversa.chain
     elif entrada["resposta_pydantic"].opcao == 3:
-        print(f">> Opção classe Pydantic: {entrada['resposta_pydantic'].opcao} informação sobre produto ")
-        return RunnableLambda(lambda x: {"input": x['input'], "history": x['history']}) | chain_produto.chain
+        logger.info(f">> Opção classe Pydantic: {entrada['resposta_pydantic'].opcao} Informação sobre produto ")
+        return RunnableLambda(lambda x: {"input": x['input'], "history": x['history']}) | roteamento_produto.chain_principal_produto
     elif entrada["resposta_pydantic"].opcao == 4:
-        print(f">> Opção classe Pydantic: {entrada['resposta_pydantic'].opcao} pedindo uma imagem")
+        logger.info(f">> Opção classe Pydantic: {entrada['resposta_pydantic'].opcao} pedindo uma imagem")
         return RunnableLambda(lambda x: {"input": x['input'], "history": x['history']}) | chain_imagem.chain
     elif entrada["resposta_pydantic"].opcao == 5:
-        print(f">> Opção classe Pydantic: {entrada['resposta_pydantic'].opcao} Pagamento")
+        logger.info(f">> Opção classe Pydantic: {entrada['resposta_pydantic'].opcao} Pagamento")
         return RunnableLambda(lambda x: {"input": x['input'], "history": x['history']}) | chain_pagamento.chain
     elif entrada["resposta_pydantic"].opcao == 6:
-        print(f">> Opção classe Pydantic: {entrada['resposta_pydantic'].opcao} Não sei o que fazer")
+        logger.info(f">> Opção classe Pydantic: {entrada['resposta_pydantic'].opcao} Não sei o que fazer")
         return RunnableLambda(lambda x: {"input": x['input'], "history": x['history']}) | chain_nao_sabe_responder.chain
     
     else:
-        print("Opção escolhida pelo LLM não mapeada.")
+        logger.info("Opção escolhida pelo LLM não mapeada.")
 
 
 
@@ -88,14 +89,6 @@ def run_chatbot(message, sender):
                 "text": result,
             }
         url = EVOLUTION_TEXT_URL
-    print(f'URL AQUI !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! {url}')
-    print(f'Resposta !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! {result}')
     
     
     return payload , url
-
-#
-#
-# runnable_with_history -> chain_principal_com_trimming -> chain_principal
-#
-#
