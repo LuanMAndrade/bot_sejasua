@@ -4,20 +4,21 @@ from pydantic import BaseModel, Field
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
+from langchain_openai import ChatOpenAI
 
 # Carregar as chaves APIs presentes no arquivo .env
 load_dotenv()
 # --------------------------------------------------------------------------------
 
 # Instanciar um chatmodel para comunicarmos com os modelos LLMs
-model = ChatGoogleGenerativeAI(model='gemini-2.5-flash')
+model = ChatGoogleGenerativeAI(model='gemini-2.5-flash', temperature = 0)
+model = ChatOpenAI(model="gpt-4o", temperature = 0)
 
 # --------------------------------------------------------------------------------
 # Criando o classificador da pergunta de entrada do usuário:
 class ClassificaEntrada(BaseModel):
-    opcao: int = Field(description="Defina 1 se a cliente ainda não falou qual tipo de produto ele quer, por exemplo: Tamanho, cor, categoria, finalidade, etc. \
-Defina 2 se a cliente definiu algum tipo de característica do produto que a interessa, que ela ainda não tenha dito antes.\
-Defina 3 se a cliente já definiu algum tipo de característica do produto que a interessa, mas na última mensagem não deu nenhuma característica nova.")
+    opcao: int = Field(description="Defina 1 se for necessário consultar o estoque para dar a informação que a cliente deseja (Se for informação relacionada a um produto que acabou de ser informado, não é preciso consultar o estoque)\
+Defina 2 se não for necessário consultar o estoque para dar a informação que a cliente deseja")
 
 # Criando o parser estruturado
 parser_classifica = PydanticOutputParser(pydantic_object=ClassificaEntrada)

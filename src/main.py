@@ -1,94 +1,80 @@
-from operator import itemgetter
-from src.memoria import get_session_history, trimmer
-from src.chains.chains_first.meu_chain_classifica import chain_de_roteamento
-
-from langchain_core.runnables import RunnableLambda, RunnableParallel, RunnablePassthrough
-from langchain_core.runnables.history import RunnableWithMessageHistory
-from src.chains.chains_first import chain_loja, chain_conversa, chain_imagem, chain_nao_sabe_responder, chain_pagamento
-from src.chains.chain_produto import roteamento_produto
+from fastapi import FastAPI, Request
+import httpx
 import os
-from loguru import logger
+from dotenv import load_dotenv
+from src.roteamento_principal import run_chatbot
+import asyncio
+import sqlite3
 
-EVOLUTION_TEXT_URL= os.getenv('EVOLUTION_TEXT_URL')
-EVOLUTION_MEDIA_URL= os.getenv('EVOLUTION_MEDIA_URL')
+load_dotenv()
 
-def executa_roteamento(entrada: dict):
-    global opcao
-    opcao = entrada["resposta_pydantic"].opcao
+EVOLUTION_API_KEY = os.getenv("EVOLUTION_API_KEY")
+WC_WEBHOOK_SECRET = "J~}Q%f^B#.@:J<mt]7a^=c4d_NVU]o0.0c(RI{8=,bPptHm[!@"
 
-    entrada["resposta_pydantic"].opcao
-    if entrada["resposta_pydantic"].opcao == 1:
-        logger.info(f">> Opção classe Pydantic: {entrada['resposta_pydantic'].opcao} (Informações ou orientações sobre a loja)")
-        return RunnableLambda(lambda x: {"input": x['input'], "history": x['history']}) | chain_loja.chain
-    elif entrada["resposta_pydantic"].opcao == 2:
-        logger.info(f">> Opção classe Pydantic: {entrada['resposta_pydantic'].opcao} (Conversa normal)")
-        return RunnableLambda(lambda x: {"input": x['input'], "history": x['history']}) | chain_conversa.chain
-    elif entrada["resposta_pydantic"].opcao == 3:
-        logger.info(f">> Opção classe Pydantic: {entrada['resposta_pydantic'].opcao} Informação sobre produto ")
-        return RunnableLambda(lambda x: {"input": x['input'], "history": x['history']}) | roteamento_produto.chain_principal_produto
-    elif entrada["resposta_pydantic"].opcao == 4:
-        logger.info(f">> Opção classe Pydantic: {entrada['resposta_pydantic'].opcao} pedindo uma imagem")
-        return RunnableLambda(lambda x: {"input": x['input'], "history": x['history']}) | chain_imagem.chain
-    elif entrada["resposta_pydantic"].opcao == 5:
-        logger.info(f">> Opção classe Pydantic: {entrada['resposta_pydantic'].opcao} Pagamento")
-        return RunnableLambda(lambda x: {"input": x['input'], "history": x['history']}) | chain_pagamento.chain
-    elif entrada["resposta_pydantic"].opcao == 6:
-        logger.info(f">> Opção classe Pydantic: {entrada['resposta_pydantic'].opcao} Não sei o que fazer")
-        return RunnableLambda(lambda x: {"input": x['input'], "history": x['history']}) | chain_nao_sabe_responder.chain
-    
+pausas = {}
+
+app = FastAPI()
+
+@app.post("/webhook")
+async def webhook_receiver(request: Request):
+    data = await request.json()
+
+    if 'event' in data:
+        return await whatsapp(data)
+    elif 'id' in data:
+        return await woocommerce(data)
     else:
-        logger.info("Opção escolhida pelo LLM não mapeada.")
-
-
-
-# Cria a cadeia final usando LangChain Expression Language (LCEL)
-chain_principal = (RunnableParallel({"input": itemgetter("input"),
-                                     "history": itemgetter("history"),
-                                     "resposta_pydantic": chain_de_roteamento
-                                     })
-                   | RunnableLambda(executa_roteamento))
-
-
-
-## Encapsulando nossa chain com a classe de gestão de mensagens de histórico
-chain_principal_com_trimming = (
-    RunnablePassthrough.assign(history=itemgetter("history") | trimmer)
-    | chain_principal
-)
-
-runnable_with_history = RunnableWithMessageHistory(
-    chain_principal_com_trimming,
-    get_session_history,
-    input_messages_key="input",
-    history_messages_key="history",
-)
-
-def run_chatbot(message, sender):
-    result = runnable_with_history.invoke(
-                {"input": message},
-                config={"configurable": {"session_id": sender}},
-            )
+        print('MENSAGEM NÃO VEIO DO WHATSAPP NEM DO WEBHOOK')
     
-    if opcao == 4:
-        payload = {
-                "number": sender,
-                "mediatype": "image",
-                "caption": "Veja o produto!",
-                "media": result
-            }
-        url = EVOLUTION_MEDIA_URL
-    elif opcao == 6:
-        payload = {
-                "number": '557181238313@s.whatsapp.net',
-                "text": result,
-            }
-        url = EVOLUTION_TEXT_URL
-    else:
-        payload = {
-                "number": sender,
-                "text": result,
-            }
-        url = EVOLUTION_TEXT_URL
+
+async def woocommerce(data): 
+    id = data.get("id")
+    estoque = data.get("stock_quantity")
+
+    conn = sqlite3.connect('banco_dados.db')
+    cursor = conn.cursor()
+    cursor.execute("UPDATE produtos SET estoque = ? WHERE id = ? ", (estoque, id)) 
+    conn.commit()
+    conn.close()
+
+    print(f'Atualização de estoque. Produto: {id}. Estoque:{estoque}')
+    return {"ok": True}
+
+
+async def whatsapp(data):
+    print(f'Dados recebidos: {data}')
     
+    sender = data["data"]["key"]["remoteJid"]
+    message_data = data["data"].get("message", {})
+    nome = data["data"]["pushName"]
+
+    if data["data"]["key"]["fromMe"] == True and data['data']['source'] == 'ios':  
+        pausas[sender] = asyncio.get_event_loop().time() + 7200
+        print(f"PAUSA ativada para {sender} por {7200} segundos")
+        return {"status": f"chatbot pausado para {sender}"}
     
-    return payload , url
+    agora = asyncio.get_event_loop().time()
+    if sender in pausas:
+        if agora < pausas[sender]:
+            print(f"{sender} ainda em pausa. Ignorando chatbot.")
+            return {"status": f"em pausa até {pausas[sender] - agora:.1f}s"}
+        else:
+            del pausas[sender]  # tempo expirou
+
+    if "conversation" in message_data:
+        message = message_data["conversation"]
+
+        if sender == '557183532189@s.whatsapp.net':
+
+            payload, url = run_chatbot(message, sender, nome)
+
+            headers = {
+                "Content-Type": "application/json",
+                "apikey": EVOLUTION_API_KEY
+            }
+
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url, json=payload, headers=headers)
+                print("Resposta enviada:", response.status_code, response.text)
+
+            return {"status": "ok"}

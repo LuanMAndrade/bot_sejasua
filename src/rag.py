@@ -1,8 +1,9 @@
-from langchain.document_loaders import PyPDFLoader, TextLoader, CSVLoader
+from langchain.document_loaders import PyPDFLoader, CSVLoader
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
 import os
+from langchain_community.document_loaders import TextLoader
 
 
 embedding_model = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
