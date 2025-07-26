@@ -7,6 +7,7 @@ from langchain_openai import OpenAIEmbeddings
 import json
 
 def rag(query):
+    
     # 0. Definir diretório onde será salvo o banco vetorial
     PERSIST_DIR = "chroma_db"
 
@@ -34,10 +35,11 @@ def rag(query):
         "Valores do atributo 1", 
         "Nome do atributo 2", 
         "Valores do atributo 2",               
-        Descrição, 
+        "Descrição curta", 
         Preço, 
         Estoque,
         "Metadado: rtwpvg_images",
+        Imagens,
         Tipo
         FROM estoque
 
@@ -46,13 +48,13 @@ def rag(query):
 
         # Criar documentos do LangChain
         documentos = []
-        for id_, nome, nome_do_atributo_1, valores_do_atributo_1, nome_do_atributo_2, valores_do_atributo_2, descricao, preco, estoque, imagem, tipo in linhas:
+        for id_, nome, nome_do_atributo_1, valores_do_atributo_1, nome_do_atributo_2, valores_do_atributo_2, descricao, preco, estoque, imagens, imagem_principal, tipo in linhas:
             if tipo == "variable":
-                conteudo = {'Nome': nome, 'Descrição': descricao, 'Variações': []}
+                conteudo = {'Nome': nome, 'Descrição': descricao, 'Link das imagens gerais': imagem_principal , 'Variações': []}
                 documento_atual = Document(page_content=json.dumps(conteudo, ensure_ascii=False), metadata={"id": id_})
                 documentos.append(documento_atual)
             elif tipo == "variation":
-                variacao = f"{nome_do_atributo_1}: {valores_do_atributo_1}, {nome_do_atributo_2}: {valores_do_atributo_2},Estoque: {estoque}, Preço: {preco} Link da imagem: {imagem}"
+                variacao = f"{nome_do_atributo_1}: {valores_do_atributo_1}, {nome_do_atributo_2}: {valores_do_atributo_2},Estoque: {estoque}, Preço: {preco} Links das imagens da variação: {imagens}"
                 conteudo_dict = json.loads(documento_atual.page_content)
                 conteudo_dict['Variações'].append(variacao)
                 documento_atual.page_content = json.dumps(conteudo_dict, ensure_ascii=False)
