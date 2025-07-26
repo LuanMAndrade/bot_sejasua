@@ -22,3 +22,26 @@ def create_estoque(path):
     conn.close()
 
 create_estoque('C:\\Users\\Luan\\Desktop\\VScode Projetos\\Chatbot\\data\\estoque.csv')
+
+# conn = sqlite3.connect("estoque.db")
+# cursor = conn.cursor()
+
+# # Pega todas as linhas ordenadas pelo ID (ou pela ordem que fizer sentido no seu caso)
+# cursor.execute("SELECT ID, tipo, Descrição FROM estoque ORDER BY ID")
+# linhas = cursor.fetchall()
+
+# descricao_atual = None
+
+# for id_, tipo, descricao in linhas:
+#     if tipo == "variable":
+#         # Armazena a descrição atual
+#         descricao_atual = descricao
+#     elif tipo == "variation" and descricao_atual is not None:
+#         # Atualiza a linha com a descrição herdada
+#         cursor.execute("UPDATE estoque SET Descrição = ? WHERE ID = ?", (descricao_atual, id_))
+
+# # Salva alterações no banco
+# conn.commit()
+# conn.close()
+
+# print("✅ Descrições copiadas com sucesso!")

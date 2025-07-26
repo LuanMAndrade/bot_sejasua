@@ -3,5 +3,3 @@ cores: Amarelo, Vinho, Azul, Azul Claro, Azul Marinho, Vermelho, Branca, Rosê, 
 tamanhos: 'P', 'M', 'G', 'Único'
 categorias: 'Shorts', 'Top's', 'Calças', 'Conjuntos', 'Blusas', 'Casaco', 'Moda Praia', 'Macaquinho'
 tags: 'Corrida'"""
-
-print(informacoes)

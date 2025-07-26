@@ -4,8 +4,8 @@ from pydantic import BaseModel, Field
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
-from langchain_core.prompts.chat import MessagesPlaceholder
 from langchain_openai import ChatOpenAI
+from langchain_core.runnables import RunnableLambda
 
 # Carregar as chaves APIs presentes no arquivo .env
 load_dotenv()
@@ -20,9 +20,8 @@ model = ChatOpenAI(model="gpt-4o", temperature = 0)
 class ClassificaEntrada(BaseModel):
     opcao: int = Field(description="Defina 1 se a pergunta do usuário solicitar informações/orientações sobre a loja ou se for uma conversa normal.\
 Defina 2 se for solicitação de informação sobre produto.\
-Defina 3 se estiver pedindo uma imagem.\
-Defina 4 se for qualquer coisa relacionada a pagamento.\
-Defina 5 se for qualquer outra coisa não relacionada anteriormente.")
+Defina 3 se for qualquer coisa relacionada a pagamento.\
+Defina 4 se for qualquer outra coisa não relacionada anteriormente.")
 
 # Criando o parser estruturado
 parser_classifica = PydanticOutputParser(pydantic_object=ClassificaEntrada)

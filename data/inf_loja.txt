@@ -1,3 +1,6 @@
+    Nome da loja:
+    Seja Sua
+ 
     Horario de funcionamento:
 Segunda a Sábado, das 9h às 19h
 
@@ -6,5 +9,5 @@ Shopping Caboatã
 
     Metodos de pagamento:
 Não aceitamos fiado
-Aceitamos credito, debito, pix e dinheiro
+Aceitamos crédito, debito, pix e dinheiro
 

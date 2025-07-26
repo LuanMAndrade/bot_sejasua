@@ -9,7 +9,10 @@ import sqlite3
 load_dotenv()
 
 EVOLUTION_API_KEY = os.getenv("EVOLUTION_API_KEY")
-WC_WEBHOOK_SECRET = "J~}Q%f^B#.@:J<mt]7a^=c4d_NVU]o0.0c(RI{8=,bPptHm[!@"
+WC_WEBHOOK_SECRET = os.getenv("WC_WEBHOOK_SECRET")
+EVOLUTION_TEXT_URL= os.getenv('EVOLUTION_TEXT_URL')
+EVOLUTION_MEDIA_URL= os.getenv('EVOLUTION_MEDIA_URL')
+EVOLUTION_PRESENCE_URL= os.getenv('EVOLUTION_PRESENCE_URL')
 
 pausas = {}
 
@@ -40,8 +43,11 @@ async def woocommerce(data):
     print(f'Atualização de estoque. Produto: {id}. Estoque:{estoque}')
     return {"ok": True}
 
+ram = {}
 
 async def whatsapp(data):
+    global ram
+
     print(f'Dados recebidos: {data}')
     
     sender = data["data"]["key"]["remoteJid"]
@@ -63,18 +69,65 @@ async def whatsapp(data):
 
     if "conversation" in message_data:
         message = message_data["conversation"]
+        if ram.get(sender):
+            ram[sender] += f'\n{message}'
+        else:
+            ram[sender] = message
+        messages_antes = ram[sender]
+        
+        await asyncio.sleep(10)
+        
+        if ram[sender] == messages_antes:
+            message = ram[sender]
+            ram.pop(sender, None)
+        else:
+            return
 
-        if sender == '557183532189@s.whatsapp.net':
+        if sender == '557181238313@s.whatsapp.net':
+            print(message)
+            
 
-            payload, url = run_chatbot(message, sender, nome)
+            respostas, opcao = run_chatbot(message, sender, nome)
 
             headers = {
                 "Content-Type": "application/json",
                 "apikey": EVOLUTION_API_KEY
-            }
+                }
 
             async with httpx.AsyncClient() as client:
-                response = await client.post(url, json=payload, headers=headers)
-                print("Resposta enviada:", response.status_code, response.text)
+                typing_payload = {
+                    "number": sender,
+                    'delay':5000,
+                    'presence':'composing'}
+                
+                typing_url = EVOLUTION_PRESENCE_URL  # mesma URL para texto
 
-            return {"status": "ok"}
+                for parte in respostas['lista_respostas']:
+                    await client.post(typing_url, json=typing_payload, headers=headers, timeout=10)
+                    if 'http' in parte:
+                        payload = {
+                            "number": sender,
+                            "mediatype": "image",
+                            "caption": "",
+                            "media": parte
+                            }
+                        url = EVOLUTION_MEDIA_URL
+                    elif opcao == 4 or opcao == 5:
+                        payload = {
+                            "number": '557181238313@s.whatsapp.net',
+                            "text": parte
+                            }
+                        url = EVOLUTION_TEXT_URL
+
+                    else:
+                        payload = {
+                            "number": sender,
+                            "text": parte
+                            }
+                        url = EVOLUTION_TEXT_URL
+
+
+                    response = await client.post(url, json=payload, headers=headers)
+                    print("Resposta enviada:", parte, "-", response.status_code)
+                    
+                    await asyncio.sleep(2.5)  # espera entre mensagens

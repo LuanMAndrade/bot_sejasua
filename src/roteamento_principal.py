@@ -1,11 +1,9 @@
 from operator import itemgetter
 from src.memoria import get_session_history, trimmer
 from src.chain_classifica_principal import chain_de_roteamento
-
 from langchain_core.runnables import RunnableLambda, RunnableParallel, RunnablePassthrough
 from langchain_core.runnables.history import RunnableWithMessageHistory
-from src.chains.chains_principais import chain_conversa, chain_imagem, chain_nao_sabe_responder, chain_pagamento
-from src.chains.chains_principais import roteamento_produto
+from src.chains import chain_conversa, chain_nao_sabe_responder, chain_pagamento, chain_produto
 import os
 from loguru import logger
 
@@ -22,14 +20,11 @@ def executa_roteamento(entrada: dict):
         return RunnableLambda(lambda x: {"input": x['input'], "history": x['history']}) | chain_conversa.chain
     elif entrada["resposta_pydantic"].opcao == 2:
         logger.info(f">> Opção classe Pydantic: {entrada['resposta_pydantic'].opcao} Informação sobre produto ")
-        return RunnableLambda(lambda x: {"input": x['input'], "history": x['history']}) | roteamento_produto.chain_principal_produto
+        return RunnableLambda(lambda x: {"input": x['input'], "history": x['history']}) | chain_produto.chain
     elif entrada["resposta_pydantic"].opcao == 3:
-        logger.info(f">> Opção classe Pydantic: {entrada['resposta_pydantic'].opcao} Pedindo uma imagem")
-        return RunnableLambda(lambda x: {"input": x['input'], "history": x['history']}) | chain_imagem.chain
-    elif entrada["resposta_pydantic"].opcao == 4:
         logger.info(f">> Opção classe Pydantic: {entrada['resposta_pydantic'].opcao} Pagamento")
         return RunnableLambda(lambda x: {"input": x['input'], "history": x['history'], "nome":x['nome']}) | chain_pagamento.chain
-    elif entrada["resposta_pydantic"].opcao == 5:
+    elif entrada["resposta_pydantic"].opcao == 4:
         logger.info(f">> Opção classe Pydantic: {entrada['resposta_pydantic'].opcao} Não sei o que fazer")
         return RunnableLambda(lambda x: {"input": x['input'], "history": x['history'], "nome":x['nome']}) | chain_nao_sabe_responder.chain
     
@@ -49,14 +44,14 @@ chain_principal = (RunnableParallel({"input": itemgetter("input"),
 
 
 ## Encapsulando nossa chain com a classe de gestão de mensagens de histórico
-chain_principal_com_trimming = (
-    RunnablePassthrough.assign(history=itemgetter("history") | trimmer)
+chain_principal_com_trimming = (RunnablePassthrough.assign(history=itemgetter("history") | trimmer)
     | chain_principal
 )
 
 runnable_with_history = RunnableWithMessageHistory(
     chain_principal_com_trimming,
     get_session_history,
+    output_messages_key="history_output" ,
     input_messages_key="input",
     history_messages_key="history"
 )
@@ -68,48 +63,4 @@ def run_chatbot(message, sender, nome):
                 config={"configurable": {"session_id": sender}},
             )
     
-    # if 'http' in result:
-    #     partes = result.split('http', 1)
-    #     texto = partes[0].strip()
-    #     resto = 'http' + partes[1].strip()
-
-    #     for extensao in ['.jpg', '.png', '.jpeg', '.webp']:
-    #         if extensao in resto:
-    #             link = resto.split(extensao)[0] + extensao
-    #             break
-    #     else:
-    #         link = resto  # se não achar nenhuma extensão de imagem
-
-    #     print("Texto:", texto)
-    #     print("Link:", link)
-    #     payload = {
-    #             "number": sender,
-    #             "mediatype": "image",
-    #             "caption": texto,
-    #             "media": link
-    #         }
-    #     url = EVOLUTION_MEDIA_URL
-    
-    if opcao == 3:
-        payload = {
-                "number": sender,
-                "mediatype": "image",
-                "caption": "Veja o produto!",
-                "media": result
-            }
-        url = EVOLUTION_MEDIA_URL
-    elif opcao == 5 or opcao == 4:
-        payload = {
-                "number": '557181238313@s.whatsapp.net',
-                "text": result,
-            }
-        url = EVOLUTION_TEXT_URL
-    else:
-        payload = {
-                "number": sender,
-                "text": result,
-            }
-        url = EVOLUTION_TEXT_URL
-    
-    
-    return payload , url
+    return result, opcao

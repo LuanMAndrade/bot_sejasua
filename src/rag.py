@@ -1,72 +1,82 @@
-from langchain.document_loaders import PyPDFLoader, CSVLoader
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_chroma import Chroma
 import os
-from langchain_community.document_loaders import TextLoader
+import sqlite3
+from langchain_core.documents import Document
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_community.vectorstores import Chroma
+from langchain_openai import OpenAIEmbeddings
+import json
+
+def rag(query):
+    # 0. Definir diretório onde será salvo o banco vetorial
+    PERSIST_DIR = "chroma_db"
+
+    # 1. Configurar o modelo de embeddings do Google
+    embedding_model = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    embedding_model = OpenAIEmbeddings(model="text-embedding-3-small")
 
 
-embedding_model = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-documento_teste = "C:\\Users\\Luan\\Desktop\\VScode Projetos\\Chatbot\\data\\inf_loja.txt"
-documento_teste2 = "C:\\Users\\Luan\\Desktop\\VScode Projetos\\Chatbot\\data\\estoque.csv"
+    # 2. Verificar se o banco vetorial já existe
+    if os.path.exists(PERSIST_DIR):
+        print("📦 Banco vetorial já existe, carregando do disco...")
+        chroma_db = Chroma(persist_directory=PERSIST_DIR, embedding_function=embedding_model)
+    else:
+        print("📦 Banco vetorial não encontrado, criando a partir do SQLite...")
 
-lista_documentos = [documento_teste, documento_teste2]
+        # Conectar ao SQLite
+        conn = sqlite3.connect("estoque.db")
+        cursor = conn.cursor()
 
+        cursor.execute("""
+        SELECT 
+        ID,
+        Nome, 
+        "Nome do atributo 1", 
+        "Valores do atributo 1", 
+        "Nome do atributo 2", 
+        "Valores do atributo 2",               
+        Descrição, 
+        Preço, 
+        Estoque,
+        "Metadado: rtwpvg_images",
+        Tipo
+        FROM estoque
 
-def divide_texto(documentos, tamanho_maximo=500):
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=tamanho_maximo, length_function=len, chunk_overlap=0)
-    lista = []
-    for documento in documentos:
-        splitado = text_splitter.split_documents(documento)
-        lista.extend(splitado)
-    return lista
+        """)
+        linhas = cursor.fetchall()
 
-def banco_vetorial(documents):
-    Chroma.from_documents(
-        documents,
-        collection_name='banco_vetorial',
-        embedding=embedding_model,
-        persist_directory="./meu_banco_vetorial"
-    )
+        # Criar documentos do LangChain
+        documentos = []
+        for id_, nome, nome_do_atributo_1, valores_do_atributo_1, nome_do_atributo_2, valores_do_atributo_2, descricao, preco, estoque, imagem, tipo in linhas:
+            if tipo == "variable":
+                conteudo = {'Nome': nome, 'Descrição': descricao, 'Variações': []}
+                documento_atual = Document(page_content=json.dumps(conteudo, ensure_ascii=False), metadata={"id": id_})
+                documentos.append(documento_atual)
+            elif tipo == "variation":
+                variacao = f"{nome_do_atributo_1}: {valores_do_atributo_1}, {nome_do_atributo_2}: {valores_do_atributo_2},Estoque: {estoque}, Preço: {preco} Link da imagem: {imagem}"
+                conteudo_dict = json.loads(documento_atual.page_content)
+                conteudo_dict['Variações'].append(variacao)
+                documento_atual.page_content = json.dumps(conteudo_dict, ensure_ascii=False)
+            else:
+                print("Algo de errado aconteceu")
 
+        # Criar banco vetorial com Chroma
+        chroma_db = Chroma.from_documents(documents=documentos, embedding=embedding_model, persist_directory=PERSIST_DIR)
+        chroma_db.persist()
+        print("✅ Banco vetorial criado e salvo em disco.")
 
-def ler_docs(documentos):
-    lista = []
-    for documento in documentos:
-        if documento.endswith(".txt"):
-            loaded = TextLoader(documento, encoding='utf-8').load()
-            lista.append(loaded)
-        elif documento.endswith(".csv"):
-            loaded = CSVLoader(file_path=documento).load()
-            lista.append(loaded)
-        else:
-            loaded = PyPDFLoader(documento).load()
-            lista.append(loaded)
-    return lista
-    
+    # 3. Realizar consulta
+    resultados = chroma_db.similarity_search(query, k=7)
+    produtos = []
 
-def connect_bv():
-    vector_store = Chroma(
-        collection_name='banco_vetorial',
-        embedding_function=embedding_model,
-        persist_directory="./meu_banco_vetorial"
-    )
-    return vector_store
+    # 4. Exibir resultados
+    for i, doc in enumerate(resultados):
+        produtos.append(doc.page_content)
+        print(f"\n🔹 Resultado {i}:")
+        print(doc.page_content)
+        print(f"📎 Metadata: {doc.metadata}")
+    return produtos
 
-if not os.path.exists("./meu_banco_vetorial"):
-    print ("O diretório './meu_banco_vetorial' não existe... realizando a indexação")
-    texto_completo_lido= ler_docs(lista_documentos)
-    divide_texto = divide_texto(texto_completo_lido)
-    banco_vetorial(divide_texto)
-else:
-    print ("O diretório './meu_banco_vetorial' já existe. Pulando a criação do banco vetorial.")
+      
 
-db = connect_bv()
-
-query = "Qual o preço do top faixa de cor preto e tamanho M?"
-
-retorno = db.similarity_search(query, k=1)
-
-print(retorno)
-
+     
 
