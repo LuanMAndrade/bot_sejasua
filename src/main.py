@@ -116,8 +116,6 @@ async def whatsapp(data):
             return  
     #__________________________________________________________________________
 
-        
-
         respostas, opcao = run_chatbot(message, sender, nome)
 
         headers = {

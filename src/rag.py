@@ -67,7 +67,7 @@ def rag(query):
         print("✅ Banco vetorial criado e salvo em disco.")
 
     # 3. Realizar consulta
-    resultados = chroma_db.similarity_search(query, k=7)
+    resultados = chroma_db.similarity_search(query, k=3)
     produtos = []
 
     # 4. Exibir resultados
