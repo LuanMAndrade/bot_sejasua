@@ -9,7 +9,7 @@ def get_session_history(session_id):
     return SQLChatMessageHistory(session_id=session_id, connection='sqlite:///chat_history.db')
 
 
-trimmer = trim_messages(strategy="last", max_tokens=100, token_counter= len)
+trimmer = trim_messages(strategy="last", max_tokens=30, token_counter= len)
 
 def create_estoque(path):
 
@@ -21,4 +21,4 @@ def create_estoque(path):
 
     conn.close()
 
-create_estoque('C:\\Users\\Luan\\Desktop\\VScode Projetos\\Chatbot\\data\\estoque.csv')
+create_estoque('/root/chatbots/bot_sejasua/Chatbot/data/estoque.csv')

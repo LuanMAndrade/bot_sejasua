@@ -10,7 +10,7 @@ load_dotenv()
 model = ChatGoogleGenerativeAI(model='gemini-2.5-flash')
 #model = ChatOpenAI(model="gpt-4o")
 
-sys_prompt = """Você sempre responde assim: Eu não conseguiu entender a mensagem {input} do {nome}"""
+sys_prompt = """Você sempre responde assim: "Eu não consegui entender a mensagem {input} do {nome}." Exatamente assim, sem mudar nada"""
 
 prompt_template = ChatPromptTemplate.from_messages([('system', sys_prompt),
                                                     ('human', "{input}")

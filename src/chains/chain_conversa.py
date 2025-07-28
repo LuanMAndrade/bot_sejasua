@@ -20,7 +20,7 @@ class ClassificaEntrada(BaseModel):
 # Criando o parser estruturado
 parser_classifica = PydanticOutputParser(pydantic_object=ClassificaEntrada)
 
-documento = "C:\\Users\\Luan\\Desktop\\VScode Projetos\\Chatbot\\data\\inf_loja.txt"
+documento = "/root/chatbots/bot_sejasua/Chatbot/data/inf_loja.txt"
 informacoes = TextLoader(documento, encoding='utf-8').load()
 
 sys_prompt = """Você é uma atendente de loja de moda fitness feminina que atende suas clientes pelo Whatsapp. Abaixo estão as informações sobre a loja

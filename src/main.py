@@ -11,20 +11,21 @@ load_dotenv()
 INSTANCIA_EVOLUTION_API = os.getenv("INSTANCIA_EVOLUTION_API")
 EVOLUTION_API_KEY = os.getenv("EVOLUTION_API_KEY")
 WC_WEBHOOK_SECRET = os.getenv("WC_WEBHOOK_SECRET")
+PORTA = os.getenv("PORTA")
 
 NUMERO_BACKUP = os.getenv('NUMERO_BACKUP')
 
 # Link para texto
 EVOLUTION_TEXT_URL_TEMPLATE = os.getenv("EVOLUTION_TEXT_URL")
-EVOLUTION_TEXT_URL = EVOLUTION_TEXT_URL_TEMPLATE.format(INSTANCIA=INSTANCIA_EVOLUTION_API)
+EVOLUTION_TEXT_URL = EVOLUTION_TEXT_URL_TEMPLATE.format(INSTANCIA=INSTANCIA_EVOLUTION_API, PORTA=PORTA)
 
 # Link para o "digitando..."
 EVOLUTION_PRESENCE_URL_TEMPLATE = os.getenv("EVOLUTION_PRESENCE_URL")
-EVOLUTION_PRESENCE_URL = EVOLUTION_PRESENCE_URL_TEMPLATE.format(INSTANCIA=INSTANCIA_EVOLUTION_API)
+EVOLUTION_PRESENCE_URL = EVOLUTION_PRESENCE_URL_TEMPLATE.format(INSTANCIA=INSTANCIA_EVOLUTION_API, PORTA=PORTA)
 
 # Link para midia
 EVOLUTION_MEDIA_URL_TEMPLATE = os.getenv("EVOLUTION_MEDIA_URL")
-EVOLUTION_MEDIA_URL = EVOLUTION_MEDIA_URL_TEMPLATE.format(INSTANCIA=INSTANCIA_EVOLUTION_API)
+EVOLUTION_MEDIA_URL = EVOLUTION_MEDIA_URL_TEMPLATE.format(INSTANCIA=INSTANCIA_EVOLUTION_API, PORTA=PORTA)
 
 #Conversas pausadas pelo atendimento humano
 pausas = {}
@@ -70,18 +71,22 @@ async def woocommerce(data):
 async def whatsapp(data):
 
     print(f'Dados recebidos: {data}')
-    
-    sender = data["data"]["key"]["remoteJid"]
+
+    if "@lid" in data["data"]["key"]["remoteJid"]:
+       sender = data["data"]["key"]["senderPn"]
+    else:
+       sender = data["data"]["key"]["remoteJid"]
+
     message_data = data["data"].get("message", {})
-    nome = data["data"]["pushName"]
+    nome = data["data"].get("pushName", "")
 
     
     # _________________________________________________________________________
     # Pausa no atendimento caso o humano assuma
 
     if data["data"]["key"]["fromMe"] == True and data['data']['source'] == 'ios':  
-        pausas[sender] = asyncio.get_event_loop().time() + 7200
-        print(f"PAUSA ativada para {sender} por {7200} segundos")
+        pausas[sender] = asyncio.get_event_loop().time() + 3600
+        print(f"PAUSA ativada para {sender} por {3600} segundos")
         return {"status": f"chatbot pausado para {sender}"}
     
     agora = asyncio.get_event_loop().time()
@@ -111,58 +116,58 @@ async def whatsapp(data):
             return  
     #__________________________________________________________________________
 
-        if sender == "5521980330995@s.whatsapp.net":
+        
 
-            respostas, opcao = run_chatbot(message, sender, nome)
+        respostas, opcao = run_chatbot(message, sender, nome)
 
-            headers = {
-                "Content-Type": "application/json",
-                "apikey": EVOLUTION_API_KEY
-                }
+        headers = {
+            "Content-Type": "application/json",
+            "apikey": EVOLUTION_API_KEY
+            }
 
-            async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient() as client:
+            
+            # configurando o "Digitando..."
+            typing_payload = {
+                "number": sender,
+                'delay':5000,
+                'presence':'composing'}
+            
+            typing_url = EVOLUTION_PRESENCE_URL 
+            
+            # Loop para que as repostas saiam separadas
+            for parte in respostas['lista_respostas']:
                 
-                # configurando o "Digitando..."
-                typing_payload = {
-                    "number": sender,
-                    'delay':5000,
-                    'presence':'composing'}
+                # "Digitando..."
+                await client.post(typing_url, json=typing_payload, headers=headers, timeout=10)
+
+                # Se for link de imagem vai nesse payload
+                if any(ext in parte for ext in ['.png', '.jpg', '.jpeg', 'webp']):
+                    payload = {
+                        "number": sender,
+                        "mediatype": "image",
+                        "caption": "",
+                        "media": parte
+                        }
+                    url = EVOLUTION_MEDIA_URL
                 
-                typing_url = EVOLUTION_PRESENCE_URL 
+                # Se não entendeu o cliente ou for pagamento vai nesse payload
+                elif opcao == 4 or opcao == 5:
+                    payload = {
+                        "number": f'{NUMERO_BACKUP}@s.whatsapp.net',
+                        "text": parte
+                        }
+                    url = EVOLUTION_TEXT_URL
                 
-                # Loop para que as repostas saiam separadas
-                for parte in respostas['lista_respostas']:
-                    
-                    # "Digitando..."
-                    await client.post(typing_url, json=typing_payload, headers=headers, timeout=10)
-
-                    # Se for link de imagem vai nesse payload
-                    if any(ext in parte for ext in ['.png', '.jpg', '.jpeg']):
-                        payload = {
-                            "number": sender,
-                            "mediatype": "image",
-                            "caption": "",
-                            "media": parte
-                            }
-                        url = EVOLUTION_MEDIA_URL
-                    
-                    # Se não entendeu o cliente ou for pagamento vai nesse payload
-                    elif opcao == 4 or opcao == 5:
-                        payload = {
-                            "number": f'{NUMERO_BACKUP}@s.whatsapp.net',
-                            "text": parte
-                            }
-                        url = EVOLUTION_TEXT_URL
-                    
-                    # Atendimento normal com texto vai nesse payload
-                    else:
-                        payload = {
-                            "number": sender,
-                            "text": parte
-                            }
-                        url = EVOLUTION_TEXT_URL
+                # Atendimento normal com texto vai nesse payload
+                else:
+                    payload = {
+                        "number": sender,
+                        "text": parte
+                        }
+                    url = EVOLUTION_TEXT_URL
 
 
-                    response = await client.post(url, json=payload, headers=headers)
-                    print("Resposta enviada:", parte, "-", response.status_code)
-                    await asyncio.sleep(2.5)
+                response = await client.post(url, json=payload, headers=headers)
+                print("Resposta enviada:", parte, "-", response.status_code)
+                await asyncio.sleep(2.5)
