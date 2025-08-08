@@ -5,14 +5,21 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_openai import OpenAIEmbeddings
 import json
+from langchain_core.tools import tool
+from typing import Annotated
+from dotenv import load_dotenv
 
-def rag(query):
+load_dotenv()
+
+@tool
+def rag(query: Annotated[str, "Utiliza a demanda da cliente para buscar produtos relevantes no estoque"]):
+    """Realiza uma busca no estoque e retorna os produtos mais relevantes para a cliente."""
     
     # 0. Definir diretório onde será salvo o banco vetorial
     PERSIST_DIR = "chroma_db"
 
     # 1. Configurar o modelo de embeddings do Google
-    embedding_model = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    #embedding_model = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     embedding_model = OpenAIEmbeddings(model="text-embedding-3-small")
 
 
@@ -67,7 +74,7 @@ def rag(query):
         print("✅ Banco vetorial criado e salvo em disco.")
 
     # 3. Realizar consulta
-    resultados = chroma_db.similarity_search(query, k=3)
+    resultados = chroma_db.similarity_search(query, k=1)
     produtos = []
 
     # 4. Exibir resultados
@@ -77,8 +84,5 @@ def rag(query):
         print(doc.page_content)
         print(f"📎 Metadata: {doc.metadata}")
     return produtos
-
-      
-
      
 

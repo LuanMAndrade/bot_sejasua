@@ -7,6 +7,9 @@ from langchain_core.runnables import RunnableLambda, RunnableParallel
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 from langchain_core.output_parsers import PydanticOutputParser
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 load_dotenv()
 
@@ -20,7 +23,7 @@ class ClassificaEntrada(BaseModel):
 # Criando o parser estruturado
 parser_classifica = PydanticOutputParser(pydantic_object=ClassificaEntrada)
 
-documento = "/root/chatbots/bot_sejasua/Chatbot/data/inf_loja.txt"
+documento = BASE_DIR/'data/inf_loja.txt'
 informacoes = TextLoader(documento, encoding='utf-8').load()
 
 sys_prompt = """Você é uma atendente de loja de moda fitness feminina que atende suas clientes pelo Whatsapp. Abaixo estão as informações sobre a loja

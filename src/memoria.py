@@ -2,6 +2,9 @@ from langchain_community.chat_message_histories import SQLChatMessageHistory
 from langchain_core.messages import trim_messages
 import pandas as pd
 import sqlite3
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 # Instancia o encapuslamento do modelo de IA para ter a database de mensagens
@@ -21,4 +24,4 @@ def create_estoque(path):
 
     conn.close()
 
-create_estoque('/root/chatbots/bot_sejasua/Chatbot/data/estoque.csv')
+create_estoque(BASE_DIR/'data/estoque.csv')

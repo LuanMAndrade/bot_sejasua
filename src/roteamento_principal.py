@@ -6,6 +6,27 @@ from langchain_core.runnables.history import RunnableWithMessageHistory
 from src.chains import chain_conversa, chain_nao_sabe_responder, chain_pagamento, chain_produto
 import os
 from loguru import logger
+import psycopg2
+
+POSTGRES_DB = os.getenv('POSTGRES_DB')
+POSTGRES_USER = os.getenv('POSTGRES_USER')
+POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD')
+
+conn = psycopg2.connect(
+    host="localhost", 
+    port=5432,
+    dbname="evolution",
+    user="postgres",
+    password="postgres"
+)
+cur = conn.cursor()
+cur.execute("""SELECT * FROM "Message" ORDER BY "messageTimestamp" DESC LIMIT 1;
+""")
+rows = cur.fetchall()
+for row in rows:
+    print(row)
+cur.close()
+conn.close()
 
 EVOLUTION_TEXT_URL= os.getenv('EVOLUTION_TEXT_URL')
 EVOLUTION_MEDIA_URL= os.getenv('EVOLUTION_MEDIA_URL')
