@@ -31,3 +31,8 @@ build/
 
 # Arquivos de credenciais
 .env
+
+# Qdrant
+qdrant_data/*
+qdrant_data/collections/
+

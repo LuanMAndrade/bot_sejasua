@@ -12,6 +12,7 @@ load_dotenv()
 
 QDRANT_URL = os.getenv("QDRANT_URL")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL")
 
 
 def busca_db():
@@ -62,7 +63,7 @@ def cria_documento(linhas):
     return documentos
 
 def cria_colecao(nome_colecao: str,documentos):
-    embedding_model = OpenAIEmbeddings(model="text-embedding-3-small")
+    embedding_model = OpenAIEmbeddings(model=EMBEDDING_MODEL)
     
     QdrantVectorStore.from_documents(
         documents=documentos,
@@ -77,23 +78,12 @@ def chama_qdrant(nome_colecao: str):
         db = QdrantVectorStore.from_existing_collection(
             collection_name=nome_colecao,
             url= QDRANT_URL,
-            embedding=OpenAIEmbeddings(model="text-embedding-3-small"),
+            embedding=OpenAIEmbeddings(model=EMBEDDING_MODEL),
         )
     except Exception as e:
         print(f"Erro ao conectar com Qdrant: {e}")
         return None
     return db
-
-def busca_produtos(query, qdrant_bv):
-    resultados = qdrant_bv.similarity_search(query, k=1)
-    produtos = []
-    for i, doc in enumerate(resultados):
-        produtos.append(doc.page_content)
-        print(f"\n🔹 Resultado {i}:")
-        print(doc.page_content)
-        print(f"📎 Metadata: {doc.metadata}")
-    return produtos
-
 
 if __name__ == '__main__':
     linhas = busca_db()
@@ -103,6 +93,3 @@ if __name__ == '__main__':
     else:
         cria_colecao("teste", documentos)
         bv = chama_qdrant("teste")
-    query = "camisa preta tamanho M"
-    produtos = busca_produtos(query, bv)
-    print(produtos)
