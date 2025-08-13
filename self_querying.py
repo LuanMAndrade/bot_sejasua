@@ -7,27 +7,26 @@ from typing import Annotated
 from dotenv import load_dotenv
 import json
 import os
+from produtos import busca_atributos
+
+
+
 
 load_dotenv()
 
 MODEL = os.getenv("MODEL")
-cores = os.getenv("CORES")
-tamanhos = os.getenv("TAMANHOS")
-categorias = os.getenv("CATEGORIAS")
-nomes = os.getenv("NOMES")
 
-
+nomes, categorias, cores, tamanhos = busca_atributos()
 
 @tool
-
 def rag(query: Annotated[str, "Utiliza a query da cliente para buscar produtos relevantes no estoque."]):
     """Realiza uma busca híbrida, utilizando busca direta e busca por contexto e retorna os produtos mais relevantes de acordo com a demanda da cliente."""
     llm = ChatOpenAI(model=MODEL)
-    vectorstore = chama_qdrant("teste")
+    vectorstore = chama_qdrant("teste1")
     metadata_field_info = [
         AttributeInfo(
             name="Cor",
-            description=f"Cor do produto. Um dentre estes: {cores}",
+            description=f"Cor do produto. Um dentre estes: {cores}. Use sempre busca parcial (contém) para este campo.",
             type="string",
         ),
         AttributeInfo(
@@ -47,12 +46,12 @@ def rag(query: Annotated[str, "Utiliza a query da cliente para buscar produtos r
         ),
         AttributeInfo(
             name="Nome",
-            description=f"Nome do produto. Use sempre busca parcial (contém) para este campo. Um dentre estes: {nomes}",
+            description=f"Nome do produto. Um dentre estes: {nomes}. Use sempre busca parcial (contém) para este campo. ",
             type="string",
         ),
         AttributeInfo(
             name="Tipo",
-            description="tipo do produto: variation ou variable",
+            description="Tipo do produto: variation ou variable. Use variation quando a cliente estiver procurando uma variação específica. Use variable se ela estiver querendo informações gerais, por exemplo: Quais cores tem?",
             type="string",
         ),
         AttributeInfo(
@@ -62,7 +61,7 @@ def rag(query: Annotated[str, "Utiliza a query da cliente para buscar produtos r
         ),
         AttributeInfo(
             name="Estoque",
-            description="quantidade em estoque do produto",
+            description="Quantidade em estoque do produto. Sempre filtre por maior que 0, a não ser que alguém fale o nome específico de um produto",
             type="integer",
         ),
         AttributeInfo(

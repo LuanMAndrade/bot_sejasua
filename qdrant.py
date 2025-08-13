@@ -43,18 +43,38 @@ def busca_db():
 def cria_documento(linhas):
     documentos = []
     descricao_geral = ""
+    counter = False
+    variacoes = []
     for id_, nome, categoria, nome_do_atributo_1, valores_do_atributo_1, nome_do_atributo_2, valores_do_atributo_2, descricao, preco, estoque, imagens, imagem_principal, tipo in linhas:
+        if tipo == "variable":
+            if counter == True:
+                texto = ""
+                for variacao in variacoes:
+                    texto += f"\n{variacao}"
+                conteudo = {'Descrição': (descricao_geral if descricao_geral else "") + "variações:" + texto}
+                documento_atual = Document(page_content=json.dumps(conteudo, ensure_ascii=False), metadata={'Tipo': tipo, 'Nome': nome_geral, 'Categoria': categoria_geral,'Preço': preco, 'Link das imagens': imagem_principal_geral})
+                documentos.append(documento_atual)
+                variacoes = []
+        if nome:
+            nome = nome.lower()
+        if valores_do_atributo_1:
+            valores_do_atributo_1 = valores_do_atributo_1.lower()
+        if valores_do_atributo_2:
+            valores_do_atributo_2 = valores_do_atributo_2.lower()
+        if categoria:
+            categoria = categoria.lower()
         if tipo == "variable":
             descricao_geral = descricao
             categoria_geral = categoria
-            conteudo = {'Descrição': descricao_geral}
-            documento_atual = Document(page_content=json.dumps(conteudo, ensure_ascii=False), metadata={"id": id_,'Tipo': tipo, 'Nome': nome, 'Categoria': categoria_geral, f'{nome_do_atributo_1}': valores_do_atributo_1, f'{nome_do_atributo_2}': valores_do_atributo_2, 'Estoque': estoque, 'Preço': preco, 'Link das imagens': imagem_principal})
-            documentos.append(documento_atual)
+            nome_geral = nome
+            imagem_principal_geral = imagem_principal
+            counter = True
         elif tipo == "variation":
             conteudo = {'Descrição': descricao_geral}
             nome = nome.split("-")[0].strip()
             documento_atual = Document(page_content=json.dumps(conteudo, ensure_ascii=False), metadata={"id": id_,'Tipo': tipo, 'Nome': nome, 'Categoria': categoria_geral, f'{nome_do_atributo_1}': valores_do_atributo_1, f'{nome_do_atributo_2}': valores_do_atributo_2, 'Estoque': estoque, 'Preço': preco, 'Links das imagens': imagens})
             documentos.append(documento_atual)
+            variacoes.append(f"({nome_do_atributo_1}: {valores_do_atributo_1}, {nome_do_atributo_2}: {valores_do_atributo_2}, Estoque: {estoque})")
         else:
             print("Algo de errado aconteceu")
 
@@ -88,8 +108,8 @@ def chama_qdrant(nome_colecao: str):
 if __name__ == '__main__':
     linhas = busca_db()
     documentos = cria_documento(linhas)
-    if chama_qdrant("teste"):
-        bv = chama_qdrant("teste")
+    if chama_qdrant("teste1"):
+        bv = chama_qdrant("teste1")
     else:
-        cria_colecao("teste", documentos)
-        bv = chama_qdrant("teste")
+        cria_colecao("teste1", documentos)
+        bv = chama_qdrant("teste1")

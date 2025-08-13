@@ -1,12 +1,33 @@
-    Nome da loja:
-    Seja Sua
- 
-    Horario de funcionamento:
-Segunda a Sábado, das 9h às 19h
+#Nome da loja#
+Seja Sua
 
-    Localização:
-Shopping Caboatã
+#Horário de funcionamento#
+Segunda a sábado, das 9h às 19h
+Não fechamos para almoço
 
-    Metodos de pagamento:
-Não aceitamos fiado
-Aceitamos crédito, debito, pix e dinheiro
+#Localização#
+Shopping Caboatã – Imbuí, Salvador
+Rua dos Colibris nº 44
+
+⸻
+
+#Como comprar na nossa loja#
+Você pode:
+	1.	Comprar presencialmente em nossa loja.
+	2.
+	3.	Fazer seu pedido pelo WhatsApp e solicitar entrega para sua casa.
+	•	Entregas em Salvador podem ser feitas imediatamente, após a confirmação do pagamento.
+	4.	Retirar na loja.
+	5.	Caso esteja em outra cidade ou estado, enviamos via Correios.
+
+⸻
+
+#Métodos de pagamento#
+	•	Para pedidos com envio via Correios (outras cidades) ou motoboy (Salvador): pagamento via Pix ou cartão de crédito (link de pagamento com opção de parcelamento sem juros).
+	•	Só separamos pedidos após a confirmação do pagamento.
+	•	Para compras presenciais: aceitamos Pix, débito, crédito (parcelamento sem juros) e dinheiro.
+
+
+#Informações gerais#
+
+Nosso site: sejasuamodafit.com.br

@@ -1,16 +1,15 @@
 services:
-  api:
-    container_name: lab_evolution_api
-    image: atendai/evolution-api:latest
+  evolution-api:
+    container_name: evolution_api
+    image: atendai/evolution-api
     restart: always
     ports:
-      - 8080:8080
-    volumes:
-      - lab_evolution_instances:/lab_evolution/instances
-    networks:
-      - lab_evolution
+      - "8080:8080"
     env_file:
       - .env
+    volumes:
+      - evolution_store:/evolution/store
+      - evolution_instances:/evolution/instances
 
   postgres:
     image: postgres:13

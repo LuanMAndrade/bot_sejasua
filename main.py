@@ -7,6 +7,8 @@ import sqlite3
 from graph import chat_graph
 from langchain_core.messages import HumanMessage
 from sqlite import init_db
+import redis.asyncio as redis
+
 
 load_dotenv()
 
@@ -29,11 +31,18 @@ EVOLUTION_PRESENCE_URL = EVOLUTION_PRESENCE_URL_TEMPLATE.format(INSTANCIA=INSTAN
 EVOLUTION_MEDIA_URL_TEMPLATE = os.getenv("EVOLUTION_MEDIA_URL")
 EVOLUTION_MEDIA_URL = EVOLUTION_MEDIA_URL_TEMPLATE.format(INSTANCIA=INSTANCIA_EVOLUTION_API, PORTA=PORTA)
 
-#Conversas pausadas pelo atendimento humano
-pausas = {}
 
-# Memória para juntar as mensagens fracionadas do cliente
-ram = {}
+
+redis_client = redis.Redis(
+    host=os.getenv("REDIS_HOST", "localhost"),
+    port=int(os.getenv("REDIS_PORT", 6380)),
+    password=os.getenv("REDIS_PASSWORD", None),
+    decode_responses=True
+)
+
+BUFFER_TTL = 30  # segundos
+LOCK_TTL = 300   # segundos
+
 
 #___________________________________________________________________________________________________________________
 
@@ -68,10 +77,8 @@ async def woocommerce(data):
 
 
 # Webhook Whatsapp 
-
-async def whatsapp(data):
+async def process_message(data):
     init_db()
-
     print(f'Dados recebidos: {data}')
 
     if "@lid" in data["data"]["key"]["remoteJid"]:
@@ -82,7 +89,7 @@ async def whatsapp(data):
     message_data = data["data"].get("message", {})
     nome = data["data"].get("pushName", "")
 
-    if sender == '5521980330995@s.whatsapp.net':
+    if sender == '557181238313@s.whatsapp.net':
         # _________________________________________________________________________
         # # Pausa no atendimento caso o humano assuma
 
@@ -103,24 +110,42 @@ async def whatsapp(data):
 
         if "conversation" in message_data:
             message = message_data["conversation"]
-            if ram.get(sender):
-                ram[sender] += f'\n{message}'
-            else:
-                ram[sender] = message
-            messages_antes = ram[sender]
+            # message_id = data["data"]["key"]["id"]
+            # lock_key = f"lock:{sender}:{message_id}"
+            # print(f"Lock key: {lock_key}")
+            # if await redis_client.exists(lock_key):
+            #     print(f"Mensagem {message_id} já processada. Ignorando.")
+            #     return {"status": "duplicada"}
+            # await redis_client.setex(lock_key, LOCK_TTL, 1)
             
-            await asyncio.sleep(1)
+
+            # 2️⃣ Adiciona mensagem no buffer
+            buffer_key = f"ram:{sender}"
+            current_text = await redis_client.get(buffer_key) or ""
+            new_text = f"{current_text}\n{message}".strip()
+            await redis_client.setex(buffer_key, BUFFER_TTL+1, new_text)
+            print(1)
             
-            if ram[sender] == messages_antes:
-                message = ram[sender]
-                ram.pop(sender, None)
+
+            # 3️⃣ Espera o tempo do buffer para ver se chegam mais mensagens
+            await asyncio.sleep(BUFFER_TTL)
+            print("Aqui está o problema")
+
+            final_text = await redis_client.get(buffer_key)
+            print("Ou aqui??")
+            print(f"Final text: {final_text}\n New text: {new_text}")
+            if final_text == new_text:
+                # ninguém enviou mais nada -> processa
+                await redis_client.delete(buffer_key)
+                print(f"Processando mensagem final: {final_text}")
             else:
-                return {"status": "mensagem fracionada, aguardando mais partes"}
+                print("Ainda recebendo partes da mensagem, aguardando.")
+                return {"status": "aguardando"}
 
         #__________________________________________________________________________
 
             config = {"configurable": {"conversation_id": sender}}
-            respostas = chat_graph.invoke({"messages": [HumanMessage(content=message)],}, config=config)
+            respostas = chat_graph.invoke({"messages": [HumanMessage(content=final_text)],}, config=config)
             mensagens = respostas["messages"]
             ultima_resposta = mensagens[-1]  # AIMessage
             lista_de_mensagens = ultima_resposta.content
@@ -133,21 +158,26 @@ async def whatsapp(data):
                 }
 
             async with httpx.AsyncClient() as client:
-                
-                # configurando o "Digitando..."
-                typing_payload = {
-                    "number": sender,
-                    'delay':500,
-                    'presence':'composing'}
-                
-                typing_url = EVOLUTION_PRESENCE_URL 
-                
+                    
                 # Loop para que as repostas saiam separadas
                 for parte in lista_de_mensagens:
                     parte = parte.strip()
-                    
+
+                     # configurando o "Digitando..."
+                
+                    typing_url = EVOLUTION_PRESENCE_URL 
+                    tempo = len(parte)*1000/17
+                    if tempo > 10:
+                        tempo = 10
+                    print(f"LEN {len(parte)}")
+
+                    typing_payload = {
+                        "number": sender,
+                        'delay':tempo,
+                        'presence':'composing'}
+
                     # "Digitando..."
-                    await client.post(typing_url, json=typing_payload, headers=headers, timeout=10)
+                    await client.post(typing_url, json=typing_payload, headers=headers, timeout=30)
 
                     # Se for link de imagem vai nesse payload
                     if any(ext in parte for ext in ['.png', '.jpg', '.jpeg', 'webp']):
@@ -178,4 +208,21 @@ async def whatsapp(data):
 
                     response = await client.post(url, json=payload, headers=headers)
                     print("Resposta enviada:", parte, "-", response.status_code)
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(2)
+
+
+
+async def whatsapp(data):
+    message_id = data["data"]["key"]["id"]
+    lock_key = f"lock:{message_id}"
+    if await redis_client.exists(lock_key):
+        print(f"Mensagem {message_id} já processada. Ignorando.")
+        return {"status": "ok"}
+    
+    await redis_client.setex(lock_key, LOCK_TTL, 1)
+    # Cria tarefa assíncrona
+    asyncio.create_task(process_message(data))
+
+    # Retorna imediatamente para evitar eco
+    return {"status": "ok"}
+    
