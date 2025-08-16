@@ -1,9 +1,9 @@
 from langchain_core.tools import tool
 from typing import Annotated
-
+import sqlite3
 
 @tool
-def add_to_cart(user_id:Annotated[str, "Número de identificação do usuário"], product_id: Annotated[str, "id do produto"], quantity: Annotated[int, "Quantidade do produto"]):
+def add_to_cart(user_id:Annotated[str, "Número de identificação do usuário"], product_id: Annotated[int, "Número 'id' do produto. Consta em "], quantity: Annotated[int, "Quantidade do produto"]):
     """Adiciona um produto ao carrinho do usuário."""
     conn = sqlite3.connect("data_base.db")
     cur = conn.cursor()
@@ -31,7 +31,7 @@ def add_to_cart(user_id:Annotated[str, "Número de identificação do usuário"]
 
 
 @tool
-def remove_from_cart(user_id: str, product_id: str):
+def remove_from_cart(user_id:Annotated[str, "Número de identificação do usuário"], product_id: Annotated[int, "Número 'id' do produto. Consta em "]):
     """Remove um produto do carrinho do usuário."""
     conn = sqlite3.connect("data_base.db")
     cur = conn.cursor()
@@ -42,7 +42,7 @@ def remove_from_cart(user_id: str, product_id: str):
 
 
 @tool
-def view_cart(user_id: str):
+def view_cart(user_id:Annotated[str, "Número de identificação do usuário"]):
     """Mostra os itens atuais do carrinho do usuário."""
     conn = sqlite3.connect("data_base.db")
     cur = conn.cursor()
@@ -51,9 +51,21 @@ def view_cart(user_id: str):
     
     if not rows:
         return "Seu carrinho está vazio."
-    
-    itens_id = [row['product_id'] for row in rows]
-    cur.execute("SELECT * FROM estoque WHERE id =?", (itens_id))
-    itens = cur.fetchall()
+    carrinho = ""
+    for row in rows:
+        id = str(row[0])
+        print(id)
+        cur.execute("SELECT Nome FROM estoque WHERE ID =?", (id,))
+        produto = cur.fetchall()
+        carrinho += f"Produto: {produto[0][0]}, Quantidade: {row[1]}\n"
     conn.close()
-    return itens
+    return carrinho
+
+def remove_from_cart2(user_id:Annotated[str, "Número de identificação do usuário"]):
+    """Remove um produto do carrinho do usuário."""
+    conn = sqlite3.connect("data_base.db")
+    cur = conn.cursor()
+    cur.execute("DELETE FROM cart WHERE user_id=?", (user_id,))
+    conn.commit()
+    conn.close()
+    return f"Produto removido do carrinho."

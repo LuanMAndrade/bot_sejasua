@@ -86,7 +86,7 @@ def rag(query: Annotated[str, "Utiliza a query da cliente para buscar produtos r
         metadados = doc.metadata
         descricao_json = json.loads(doc.page_content)
         descricao = descricao_json.get("Descrição", "")
-        resposta = f"Nome: {metadados.get("Nome")}\n'Categoria': {metadados.get("Categoria")}, Tamanho: {metadados.get('Tamanho')} Cor: {metadados.get("Cor")}, Estoque: {metadados.get("Estoque")}, Links das imagens:{metadados.get("Links das imagens")} Preço: {metadados.get("Preço")}\nDescrição: {descricao}"
+        resposta = f"id: {metadados.get("id")}, Nome: {metadados.get("Nome")}\n'Categoria': {metadados.get("Categoria")}, Tamanho: {metadados.get('Tamanho')} Cor: {metadados.get("Cor")}, Estoque: {metadados.get("Estoque")}, Links das imagens:{metadados.get("Links das imagens")} Preço: {metadados.get("Preço")}\nDescrição: {descricao}"
         lista_respostas.append(resposta)
         print(resposta)
 

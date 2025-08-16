@@ -53,12 +53,15 @@ def save_message(conversation_id, messages):
             DELETE FROM messages
             WHERE conversation_id = ?
             AND id NOT IN (
-                SELECT id FROM messages
-                WHERE conversation_id = ?
-                ORDER BY id DESC
-                LIMIT 10
-            )
-        """, (conversation_id, conversation_id))
+            SELECT id FROM (
+            SELECT id
+            FROM messages
+            WHERE conversation_id = ?
+            ORDER BY id DESC
+            LIMIT 10
+        )
+    )
+""", (conversation_id, conversation_id))
 
     conn.commit()
     conn.close()

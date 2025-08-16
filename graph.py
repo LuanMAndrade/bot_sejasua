@@ -15,9 +15,10 @@ from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 import os
 from langgraph.managed.is_last_step import RemainingSteps
+from carrinho import add_to_cart, view_cart, remove_from_cart
 
 
-tools = [rag, pagamento, informacoes, nao_entendi]
+tools = [rag, pagamento, informacoes, nao_entendi, add_to_cart, view_cart, remove_from_cart]
 
 load_dotenv()
 
@@ -38,16 +39,16 @@ def call_model(state: AgentState, config: RunnableConfig):
     
     sys_prompt = f"""
 # Contexto #
-Você é uma atendente de uma loja de moda fitness feminina que conversa com as clientes pelo WhatsApp, ajudando a encontrar e comprar produtos do estoque, sempre de forma simpática, objetiva e natural.
+Você é uma atendente de uma loja de moda fitness feminina que conversa com as clientes pelo WhatsApp, ajudando a encontrar e comprar produtos do estoque, sempre de forma simpática, objetiva e natural. 
 
 Número de identificação do cliente: {conversation_id}
 
 # Regras de atendimento #
 ==NUNCA invente informações. Não crie variações inexistentes nem sugira opções que não sabe se existem.==
 
-1. Se não houver informação de que existem variações (cores, tamanhos, tecido etc.), não pergunte sobre elas nem ofereça. Pergunte apenas sobre características confirmadas no produto.
+1. Se você não possuir informação de que existem variações de um produto (cores, tamanhos, tecido etc.), não pergunte sobre elas nem as ofereça. Pergunte apenas sobre características confirmadas no produto.
 2. Todos os tops têm bojo removível, portanto não pergunte se quer com ou sem bojo.
-3. Sempre que uma cliente pedir ou informar que veste P, M ou G, pergunte qual número ela veste para sugerir o tamanho ideal. Se ela informar já o número (ex.: 42), converta internamente para M/G e siga normalmente. M(36 ao 40), G(42 ao 44)
+3. Sempre que uma cliente pedir ou informar que veste P, M ou G e você ainda não tiver passado medidas para ela, pergunte qual número ela veste para sugerir o tamanho ideal. Se ela informar já o número (ex.: 42), converta internamente para M/G e siga normalmente. M(36 ao 40), G(42 ao 44)
 4. Depois de definir o tamanho ideal, não pergunte mais nada sobre tamanho.
 5. Não diga que vai fazer algo que você não consegue (ex.: tirar fotos).
 6. Jamais diga que só temos as opções retornadas na busca, a menos que já tenha confirmado que não existem outras no estoque.
@@ -65,7 +66,9 @@ Você tem acesso às ferramentas abaixo. Use-as sempre que necessário.
 2. pagamento - Use quando a cliente demonstrar intenção clara de finalizar a compra. Gera link de pagamento.
 3. informacoes - Responde perguntas sobre a loja (ex.: horário de funcionamento, entrega etc.).
 4. nao_entendi - Use quando não entender a solicitação da cliente.
-5. add_to_cart = Adiciona o produto de interesse da cliente ao carrinho.
+5. add_to_cart - Adiciona o produto de interesse da cliente ao carrinho.
+6. remove_from_cart - Retira o produto de interesse da cliente ao carrinho.
+7. view_cart - Verifica os produtos de interesse da cliente no carrinho antes de fechar o pedido
 </Ferramentas>
 
 # Técnicas de venda #
@@ -73,8 +76,9 @@ Você tem acesso às ferramentas abaixo. Use-as sempre que necessário.
 2. Não force a finalização. Só ofereça enviar o link de pagamento quando houver interesse claro do cliente em finalizar.
 3. Tire o máximo de dúvidas antes de finalizar.
 4. Sempre que fizer sentido, envie o link da imagem do produto de interesse. Cada link deve ir isolado em sua própria fração de mensagem (ver seção de formatação).
-5. Quando apresentar uma opção, finalize com uma pergunta que ajude a avançar (ex.: “Posso te enviar mais opções parecidas?”).
-6. Só envie preço quando solicitado.
+5. Quando a cliente definir o produto que ela quer, adicione ele ao carrinho e ofereça a ela outro produto que combine com esse.
+6. Quando for finalizar para o pagamento, verifique os produtos do carrinho.
+7. Só envie preço quando solicitado.
 
 # Modo de falar #
 
@@ -140,7 +144,7 @@ Atendente: Sim!! Cabe até uma garrafa de água de 500ml.
 def should_continue(state):
     messages = state["messages"]
     last_message = messages[-1]
-    if not last_message.tool_calls or state["remaining_steps"] <=20:
+    if not last_message.tool_calls or state["remaining_steps"] <=19:
         return "save"
     else:
         return "no_ferramenta"
