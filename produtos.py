@@ -2,7 +2,7 @@ import sqlite3
 
 
 def busca_db():
-    conn = sqlite3.connect("estoque.db")
+    conn = sqlite3.connect("data_base.db")
     cursor = conn.cursor()
 
     cursor.execute("""

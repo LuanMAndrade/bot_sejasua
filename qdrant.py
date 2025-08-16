@@ -7,16 +7,23 @@ from langchain_core.documents import Document
 from langchain_community.vectorstores import Chroma
 from langchain_openai import OpenAIEmbeddings
 import json
+from qdrant_client import QdrantClient
 
 load_dotenv()
 
-QDRANT_URL = os.getenv("QDRANT_URL")
+
+SERVER_IP = os.getenv("SERVER_IP")
+QDRANT_URL_TEMPLATE = os.getenv("QDRANT_URL")
+QDRANT_URL = QDRANT_URL_TEMPLATE.format(SERVER_IP=SERVER_IP)
+
+print(QDRANT_URL)
+
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL")
 
 
 def busca_db():
-    conn = sqlite3.connect("estoque.db")
+    conn = sqlite3.connect("data_base.db")
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -82,7 +89,9 @@ def cria_documento(linhas):
     
     return documentos
 
-def cria_colecao(nome_colecao: str,documentos):
+def cria_colecao(nome_colecao: str):
+    linhas = busca_db()
+    documentos = cria_documento(linhas)
     embedding_model = OpenAIEmbeddings(model=EMBEDDING_MODEL)
     
     QdrantVectorStore.from_documents(
@@ -106,10 +115,8 @@ def chama_qdrant(nome_colecao: str):
     return db
 
 if __name__ == '__main__':
-    linhas = busca_db()
-    documentos = cria_documento(linhas)
-    if chama_qdrant("teste1"):
-        bv = chama_qdrant("teste1")
+    if chama_qdrant("estoque_vetorial"):
+        bv = chama_qdrant("estoque_vetorial")
     else:
-        cria_colecao("teste1", documentos)
-        bv = chama_qdrant("teste1")
+        cria_colecao("estoque_vetorial")
+        bv = chama_qdrant("estoque_vetorial")

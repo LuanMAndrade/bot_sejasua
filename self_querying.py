@@ -22,7 +22,7 @@ nomes, categorias, cores, tamanhos = busca_atributos()
 def rag(query: Annotated[str, "Utiliza a query da cliente para buscar produtos relevantes no estoque."]):
     """Realiza uma busca híbrida, utilizando busca direta e busca por contexto e retorna os produtos mais relevantes de acordo com a demanda da cliente."""
     llm = ChatOpenAI(model=MODEL)
-    vectorstore = chama_qdrant("teste1")
+    vectorstore = chama_qdrant("estoque_vetorial")
     metadata_field_info = [
         AttributeInfo(
             name="Cor",
