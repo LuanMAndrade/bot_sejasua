@@ -50,48 +50,6 @@ def save_message(conversation_id, messages):
     )
 """, (conversation_id, conversation_id))
 
-    
-
-#     for message in messages:
-
-#         if isinstance(message, HumanMessage):
-#             role = "human"
-#             content_str = str(message.content)
-#         elif isinstance(message, AIMessage):
-#             role = "ai"
-#             # AIMessage geralmente tem content string simples
-#             content_str = str(message.content)
-#         elif isinstance(message, ToolMessage):
-#             role = "tool"
-#             # Salva campos necessários para reconstrução
-#             content_str = json.dumps({
-#                 "content": message.content,
-#                 "name": message.name,
-#                 "tool_call_id": message.tool_call_id
-#             }, ensure_ascii=False)
-#         else:
-#             role = "unknown"
-#             content_str = str(message.content)
-
-#         c.execute("""
-#             INSERT INTO messages (conversation_id, role, content)
-#             VALUES (?, ?, ?)
-#         """, (conversation_id, role, content_str))
-
-#         c.execute("""
-#             DELETE FROM messages
-#             WHERE conversation_id = ?
-#             AND id NOT IN (
-#             SELECT id FROM (
-#             SELECT id
-#             FROM messages
-#             WHERE conversation_id = ?
-#             ORDER BY id DESC
-#             LIMIT 10
-#         )
-#     )
-# """, (conversation_id, conversation_id))
-
     conn.commit()
     conn.close()
 
@@ -112,9 +70,6 @@ def get_history(conversation_id):
             history.append(HumanMessage(content=content_str))
         elif role == "tool":
             data = json.loads(content_str)
-            # Reconstrói ToolMessage, mas para passar ao modelo vamos transformar em AIMessage
-            # porque OpenAI não aceita 'tool' no role
-            # Então converta ToolMessage para AIMessage com o mesmo conteúdo:
             history.append(AIMessage(content=data["content"]))
         elif role == "ai":
             history.append(AIMessage(content=content_str))

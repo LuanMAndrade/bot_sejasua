@@ -1,23 +1,24 @@
-from typing import Annotated, TypedDict, Sequence
+import os
 from langgraph.graph import StateGraph, END, START, add_messages
 from langgraph.prebuilt import ToolNode
+from langgraph.managed.is_last_step import RemainingSteps
 from langchain_core.messages import AnyMessage
-from pagamento import pagamento
-from nao_entendi import nao_entendi
-from self_querying import rag
-from informacoes import informacoes
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 from langchain_core.runnables import RunnableConfig
-from dotenv import load_dotenv
-from message_history import save_message, get_history
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
-import os
-from langgraph.managed.is_last_step import RemainingSteps
-from carrinho import add_to_cart, view_cart, remove_from_cart
-from pydantic import BaseModel, Field
 from langchain_core.output_parsers import PydanticOutputParser
+from dotenv import load_dotenv
+from pydantic import BaseModel, Field
+from typing import Annotated, TypedDict, Sequence
+
+from graph.carrinho import add_to_cart, view_cart, remove_from_cart
+from graph.pagamento import pagamento
+from graph.nao_entendi import nao_entendi
+from graph.self_querying import rag
+from graph.informacoes import informacoes
+from data_base.message_history import save_message, get_history
 
 
 tools = [rag, pagamento, informacoes, nao_entendi, add_to_cart, view_cart, remove_from_cart]
@@ -228,8 +229,5 @@ def build_chat_graph():
 
     # Compila sem checkpointer
     return workflow.compile()
-
-
-chat_graph = build_chat_graph()
 
 

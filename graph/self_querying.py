@@ -1,12 +1,14 @@
 from langchain.chains.query_constructor.base import AttributeInfo
 from langchain.retrievers.self_query.base import SelfQueryRetriever
 from langchain_openai import ChatOpenAI
-from qdrant import chama_qdrant
 from langchain_core.tools import tool
 from typing import Annotated
 import json
-from produtos import busca_atributos
 from langchain_google_genai import ChatGoogleGenerativeAI
+
+from data_base.produtos import busca_atributos
+from data_base.qdrant import chama_qdrant
+
 
 nomes, categorias, cores, tamanhos = busca_atributos()
 

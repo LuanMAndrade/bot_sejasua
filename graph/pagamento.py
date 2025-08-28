@@ -4,7 +4,8 @@ import asyncio
 import os
 from dotenv import load_dotenv
 import httpx
-from carrinho import remove_from_cart2
+
+from graph.carrinho import remove_from_cart2
 
 load_dotenv()
 
