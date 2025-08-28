@@ -23,33 +23,20 @@ def save_message(conversation_id, messages):
     conn = sqlite3.connect("data_base.db")
     c = conn.cursor()
 
-    for message in messages:
-
-        if isinstance(message, HumanMessage):
-            role = "human"
-            content_str = str(message.content)
-        elif isinstance(message, AIMessage):
-            role = "ai"
-            # AIMessage geralmente tem content string simples
-            content_str = str(message.content)
-        elif isinstance(message, ToolMessage):
-            role = "tool"
-            # Salva campos necessários para reconstrução
-            content_str = json.dumps({
-                "content": message.content,
-                "name": message.name,
-                "tool_call_id": message.tool_call_id
-            }, ensure_ascii=False)
-        else:
-            role = "unknown"
-            content_str = str(message.content)
-
-        c.execute("""
+    input = str(messages[0].content)
+    role = "human"
+    c.execute("""
             INSERT INTO messages (conversation_id, role, content)
             VALUES (?, ?, ?)
-        """, (conversation_id, role, content_str))
+        """, (conversation_id, role, input))
+    output = str(messages[-1].content)
+    role = "ai"
+    c.execute("""
+            INSERT INTO messages (conversation_id, role, content)
+            VALUES (?, ?, ?)
+        """, (conversation_id, role, output))
 
-        c.execute("""
+    c.execute("""
             DELETE FROM messages
             WHERE conversation_id = ?
             AND id NOT IN (
@@ -62,6 +49,48 @@ def save_message(conversation_id, messages):
         )
     )
 """, (conversation_id, conversation_id))
+
+    
+
+#     for message in messages:
+
+#         if isinstance(message, HumanMessage):
+#             role = "human"
+#             content_str = str(message.content)
+#         elif isinstance(message, AIMessage):
+#             role = "ai"
+#             # AIMessage geralmente tem content string simples
+#             content_str = str(message.content)
+#         elif isinstance(message, ToolMessage):
+#             role = "tool"
+#             # Salva campos necessários para reconstrução
+#             content_str = json.dumps({
+#                 "content": message.content,
+#                 "name": message.name,
+#                 "tool_call_id": message.tool_call_id
+#             }, ensure_ascii=False)
+#         else:
+#             role = "unknown"
+#             content_str = str(message.content)
+
+#         c.execute("""
+#             INSERT INTO messages (conversation_id, role, content)
+#             VALUES (?, ?, ?)
+#         """, (conversation_id, role, content_str))
+
+#         c.execute("""
+#             DELETE FROM messages
+#             WHERE conversation_id = ?
+#             AND id NOT IN (
+#             SELECT id FROM (
+#             SELECT id
+#             FROM messages
+#             WHERE conversation_id = ?
+#             ORDER BY id DESC
+#             LIMIT 10
+#         )
+#     )
+# """, (conversation_id, conversation_id))
 
     conn.commit()
     conn.close()

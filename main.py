@@ -113,8 +113,6 @@ async def woocommerce(data):
 
 # Webhook Whatsapp 
 async def whatsapp(data):
-    print(data)
-    
     message_id = data["data"]["key"]["id"]
     lock_key = f"lock:{message_id}"
     if await redis_client.exists(lock_key):
@@ -123,7 +121,6 @@ async def whatsapp(data):
 
     await redis_client.setex(lock_key, LOCK_TTL, 1)
     # Cria tarefa assíncrona
-    print("cheguei aqui")
     asyncio.create_task(process_message(data, redis_client))
 
     # Retorna imediatamente para evitar eco

@@ -16,32 +16,96 @@ from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 import os
 from langgraph.managed.is_last_step import RemainingSteps
 from carrinho import add_to_cart, view_cart, remove_from_cart
+from pydantic import BaseModel, Field
+from langchain_core.output_parsers import PydanticOutputParser
 
 
 tools = [rag, pagamento, informacoes, nao_entendi, add_to_cart, view_cart, remove_from_cart]
 
 load_dotenv()
 
-MODEL = os.getenv("MODEL")
-
-model = ChatOpenAI(model=MODEL)
-model_bind_tool = model.bind_tools(tools)
-
-
-
 class AgentState(TypedDict):
     messages: Annotated[Sequence[AnyMessage], add_messages]
     remaining_steps: RemainingSteps
 
-def call_model(state: AgentState, config: RunnableConfig):
+def roteador(state: AgentState, config: RunnableConfig):
+
+    model = ChatOpenAI(model="gpt-5-mini")
+    model_bind_tool = model.bind_tools(tools)
+
     conversation_id = config.get("configurable", {}).get("conversation_id", "default") ##
     history = get_history(conversation_id) ##
     
+    
     sys_prompt = f"""
 # Contexto #
-Você é uma atendente de uma loja de moda fitness feminina que conversa com as clientes pelo WhatsApp, ajudando a encontrar e comprar produtos do estoque, sempre de forma simpática, objetiva e natural. 
+Você é um especialista em roteamento de atividades. Você analisa a conversa e com base nela define se vai utilizar alguma ferramenta ou não.
+==Se você não for usar ferramenta, o seu output deverá ser vazio==
 
 Número de identificação do cliente: {conversation_id}
+
+# Uso das ferramentas #
+
+Você tem acesso às ferramentas abaixo. Use-as sempre que necessário.
+
+<Ferramentas>
+1. rag - Busca até 4 produtos mais relevantes no estoque.
+- Se não encontrar nada, diga à cliente que não temos o produto.
+- Se encontrar, mas a cliente quiser mais opções, acrescente ao final da query "diferente de nome_do_produto1 e nome_do_produto2.
+- Se a cliente pedir qualquer informação sobre uma foto que já foi enviada anteriormente na conversa, procure no estoque o produto pelo link da imagem
+2. pagamento - Use quando a cliente demonstrar intenção clara de finalizar a compra. Gera link de pagamento.
+3. informacoes - Responde perguntas sobre a loja (ex.: horário de funcionamento, entrega etc.).
+4. nao_entendi - Use quando não entender a solicitação da cliente.
+5. add_to_cart - Adiciona o produto de interesse da cliente ao carrinho. Só ative se tiver os parametros necessários, nunca invente.
+6. remove_from_cart - Retira o produto de interesse da cliente ao carrinho.
+7. view_cart - Verifica os produtos de interesse da cliente no carrinho antes de fechar o pedido
+</Ferramentas>
+
+1. Quando a cliente definir o produto que ela quer, adicione ele ao carrinho.
+2. Antes de finalizar o pagamento, verifique os produtos do carrinho.
+
+# Saída esperada se não for usar ferramenta
+
+[]
+"""
+    
+    prompt_template = ChatPromptTemplate.from_messages([
+    ('system', sys_prompt),
+    MessagesPlaceholder(variable_name='history'),
+    MessagesPlaceholder(variable_name='current_messages'),
+])
+
+
+    full_input = {
+    "history": history,  # mensagens antigas
+    "current_messages": state["messages"]  # mensagens novas
+}
+
+
+    # Aplica o prompt formatado
+    prompt = prompt_template.invoke(full_input)
+
+    # Chama o modelo
+    response = model_bind_tool.invoke(prompt, config)
+
+    print(f"Response: {response}", flush= True)
+    
+    if not response.tool_calls:
+        response.content = ""
+
+    return {"messages": [response]}
+
+
+def formatador(state: AgentState, config: RunnableConfig):
+
+    model = ChatOpenAI(model="gpt-5")
+
+    conversation_id = config.get("configurable", {}).get("conversation_id", "default") ##
+    history = get_history(conversation_id) ##
+    
+    sys_prompt = """
+# Contexto #
+Você é uma atendente de uma loja de moda fitness feminina que conversa com as clientes pelo WhatsApp, ajudando a encontrar e comprar produtos do estoque, sempre de forma simpática, objetiva e natural. 
 
 # Regras de atendimento #
 ==NUNCA invente informações. Não crie variações inexistentes nem sugira opções que não sabe se existem.==
@@ -54,22 +118,6 @@ Número de identificação do cliente: {conversation_id}
 6. Jamais diga que só temos as opções retornadas na busca, a menos que já tenha confirmado que não existem outras no estoque.
 7. Não tente controlar muito a conversa, deixe a cliente ir mostrando o que ela quer. Por exemplo, se a cliente está perguntando sobre cor, não fique perguntando sobre tamanho.
 8. Nós vendemos Calças, Shorts, Tops, Blusas, Macaquinhos e Moda Praia. Os preços variam por cada peça.
-
-# Uso das ferramentas #
-
-Você tem acesso às ferramentas abaixo. Use-as sempre que necessário.
-
-<Ferramentas>
-1. rag - Busca até 4 produtos mais relevantes no estoque.
-- Se não encontrar nada, diga à cliente que não temos o produto.
-- Se encontrar, mas a cliente quiser mais opções, acrescente ao final da query "diferente de 'nome_do_produto1' 'nome_do_produto2'.
-2. pagamento - Use quando a cliente demonstrar intenção clara de finalizar a compra. Gera link de pagamento.
-3. informacoes - Responde perguntas sobre a loja (ex.: horário de funcionamento, entrega etc.).
-4. nao_entendi - Use quando não entender a solicitação da cliente.
-5. add_to_cart - Adiciona o produto de interesse da cliente ao carrinho.
-6. remove_from_cart - Retira o produto de interesse da cliente ao carrinho.
-7. view_cart - Verifica os produtos de interesse da cliente no carrinho antes de fechar o pedido
-</Ferramentas>
 
 # Técnicas de venda #
 1. Não diga que separou o pedido antes do pagamento.
@@ -89,15 +137,15 @@ Você tem acesso às ferramentas abaixo. Use-as sempre que necessário.
 5. Evite gírias regionais, mas mantenha um tom descontraído.
 6. Ao passar várias informações, evite tanto colocar tudo numa linha só quanto quebrar demais — busque equilíbrio.
 7. Varie cumprimentos e respostas, evitando repetir sempre as mesmas frases.
-8. Não use "—" no seu texto.
+8. Nunca use o seguinte caractere: —
 9. Seja direta, não fale coisas desnecessárias, principalmente se forem dúvidas simples.
 
 # Formatação das respostas #
 
-1. A resposta final deve vir separada em mensagens fracionadas, simulando conversa natural.
-2. O símbolo para separação será: $%&$
-3. Se houver link, ele deve estar sozinho em uma fração (sem texto antes ou depois).
-4. Se houver vários links, cada um deve vir em uma fração separada.
+A resposta final deve vir separada em mensagens fracionadas, simulando conversa natural.
+O símbolo para separação será: $%&$
+Se houver link, ele deve estar sozinho em uma fração (sem texto antes ou depois).
+Se houver vários links, cada um deve vir em uma fração separada.
 
 ## Exemplo de saída ##
 
@@ -120,32 +168,35 @@ Atendente: Sim!! Cabe até uma garrafa de água de 500ml.
 
 """
     
-    prompt_template = ChatPromptTemplate.from_messages([
-    ('system', sys_prompt),
-    MessagesPlaceholder(variable_name='history'),
-    MessagesPlaceholder(variable_name='current_messages'),
-])
+    prompt_template = ChatPromptTemplate(
+    input_variables=["history", "current_messages", "sys_prompt"],
+    # partial_variables={"format_instructions": parser.get_format_instructions()},
+    messages=[
+        ("system", sys_prompt),
+        MessagesPlaceholder(variable_name="history"),
+        MessagesPlaceholder(variable_name="current_messages"),
+    ],
+)
 
 
     full_input = {
     "history": history,  # mensagens antigas
-    "current_messages": state["messages"]  # mensagens novas
+    "current_messages": state["messages"],  # mensagens novas
+    "sys_prompt": sys_prompt
 }
 
-
-    # Aplica o prompt formatado
     prompt = prompt_template.invoke(full_input)
 
-    # Chama o modelo
-    response = model_bind_tool.invoke(prompt, config)
+    resposta = model.invoke(prompt)
     
-    return {"messages": [response]}
+    return {"messages": [resposta]}
+
 
 def should_continue(state):
     messages = state["messages"]
     last_message = messages[-1]
     if not last_message.tool_calls or state["remaining_steps"] <=19:
-        return "save"
+        return "formatador"
     else:
         return "no_ferramenta"
     
@@ -157,18 +208,21 @@ def save(state, config):
 def build_chat_graph():
     workflow = StateGraph(AgentState)
 
-    workflow.add_node("agent", call_model)
+    workflow.add_node("roteador", roteador)
+    workflow.add_node("formatador", formatador)
     workflow.add_node("no_ferramenta", ToolNode(tools))
     workflow.add_node("save", save)
 
-    # Fluxo de início → agent
-    workflow.add_edge(START, "agent")
+    # Fluxo de início → roteador
+    workflow.add_edge(START, "roteador")
 
-    # Se o agent não chamar ferramenta, encerra; senão, vai para no_ferramenta
-    workflow.add_conditional_edges("agent", should_continue)
+    # Se o roteador não chamar ferramenta, encerra; senão, vai para no_ferramenta
+    workflow.add_conditional_edges("roteador", should_continue)
 
-    # Depois da ferramenta, volta para agent
-    workflow.add_edge("no_ferramenta", "agent")
+    # Depois da ferramenta, volta para roteador
+    workflow.add_edge("no_ferramenta", "roteador")
+
+    workflow.add_edge("formatador", "save")
 
     workflow.add_edge("save", END)
 

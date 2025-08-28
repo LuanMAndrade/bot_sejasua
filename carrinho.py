@@ -3,7 +3,7 @@ from typing import Annotated
 import sqlite3
 
 @tool
-def add_to_cart(user_id:Annotated[str, "Número de identificação do usuário"], product_id: Annotated[int, "Número 'id' do produto. Consta em "], quantity: Annotated[int, "Quantidade do produto"]):
+def add_to_cart(user_id:Annotated[str, "Número de identificação do usuário"], product_id: Annotated[int, "Número 'id' do produto. Consta nas informações do produto "], quantity: Annotated[int, "Quantidade do produto"]):
     """Adiciona um produto ao carrinho do usuário."""
     conn = sqlite3.connect("data_base.db")
     cur = conn.cursor()
@@ -31,7 +31,7 @@ def add_to_cart(user_id:Annotated[str, "Número de identificação do usuário"]
 
 
 @tool
-def remove_from_cart(user_id:Annotated[str, "Número de identificação do usuário"], product_id: Annotated[int, "Número 'id' do produto. Consta em "]):
+def remove_from_cart(user_id:Annotated[str, "Número de identificação do usuário"], product_id: Annotated[int, "Número 'id' do produto. Consta nas informações do produto "]):
     """Remove um produto do carrinho do usuário."""
     conn = sqlite3.connect("data_base.db")
     cur = conn.cursor()

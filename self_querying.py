@@ -4,24 +4,17 @@ from langchain_openai import ChatOpenAI
 from qdrant import chama_qdrant
 from langchain_core.tools import tool
 from typing import Annotated
-from dotenv import load_dotenv
 import json
-import os
 from produtos import busca_atributos
-
-
-
-
-load_dotenv()
-
-MODEL = os.getenv("MODEL")
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 nomes, categorias, cores, tamanhos = busca_atributos()
 
 @tool
 def rag(query: Annotated[str, "Utiliza a query da cliente para buscar produtos relevantes no estoque."]):
     """Realiza uma busca híbrida, utilizando busca direta e busca por contexto e retorna os produtos mais relevantes de acordo com a demanda da cliente."""
-    llm = ChatOpenAI(model=MODEL)
+    llm = ChatOpenAI(model="gpt-5-mini")
+    #llm = ChatGoogleGenerativeAI(model= "gemini-2.5-pro")
     vectorstore = chama_qdrant("estoque_vetorial")
     metadata_field_info = [
         AttributeInfo(
@@ -66,7 +59,7 @@ def rag(query: Annotated[str, "Utiliza a query da cliente para buscar produtos r
         ),
         AttributeInfo(
             name="Categoria",
-            description=f"Categoria do produto. Um dentre esses: {categorias}",
+            description=f"Categoria do produto. Um dentre esses: {categorias}. Se a query for semelhante a algum desses nomes, atribua a ele. Por exemplo: top -> top's, short -> shorts",
             type="string",
         ),
     ]
@@ -76,7 +69,8 @@ def rag(query: Annotated[str, "Utiliza a query da cliente para buscar produtos r
         llm,
         vectorstore,
         document_content_description,
-        metadata_field_info
+        metadata_field_info,
+        k = 2
     )
 
     response = retriever.invoke(query)
