@@ -3,7 +3,7 @@ import pandas as pd
 from pathlib import Path
 
 def cria_estoque():
-    BASE_DIR = Path(__file__).resolve().parent
+    BASE_DIR = Path(__file__).resolve().parent.parent
     documento = BASE_DIR/'data/estoque.csv'
 
     df = pd.read_csv(documento)
@@ -24,8 +24,6 @@ def cria_estoque():
             df.loc[index, "Valores do atributo 1"] = df.loc[index, "Valores do atributo 2"]
             df.loc[index, "Valores do atributo 2"] = x
 
-
-    
     conn = sqlite3.connect("data_base.db")
 
     df.to_sql("estoque", conn, if_exists="replace", index=False)

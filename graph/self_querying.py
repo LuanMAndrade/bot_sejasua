@@ -16,17 +16,16 @@ nomes, categorias, cores, tamanhos = busca_atributos()
 def rag(query: Annotated[str, "Utiliza a query da cliente para buscar produtos relevantes no estoque."]):
     """Realiza uma busca híbrida, utilizando busca direta e busca por contexto e retorna os produtos mais relevantes de acordo com a demanda da cliente."""
     llm = ChatOpenAI(model="gpt-5-mini")
-    #llm = ChatGoogleGenerativeAI(model= "gemini-2.5-pro")
     vectorstore = chama_qdrant("estoque_vetorial")
     metadata_field_info = [
         AttributeInfo(
             name="Cor",
-            description=f"Cor do produto. Um dentre estes: {cores}. Use sempre busca parcial (contém) para este campo.",
+            description=f"Cor do produto. Use sempre busca parcial (contém) para este campo. Quando a cor possuir variações de escrita, por exemplo, amarelo e amarela, busque pelo radical da palavra (contém) 'amarel'",
             type="string",
         ),
         AttributeInfo(
             name="Tamanho",
-            description=f"Tamanho do produto. Um dentre estes: {tamanhos}",
+            description=f"Tamanho do produto. Um dentre estes: p, m, g, único",
             type="string",
         ),
         AttributeInfo(

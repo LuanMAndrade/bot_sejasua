@@ -16,8 +16,6 @@ SERVER_IP = os.getenv("SERVER_IP")
 QDRANT_URL_TEMPLATE = os.getenv("QDRANT_URL")
 QDRANT_URL = QDRANT_URL_TEMPLATE.format(SERVER_IP=SERVER_IP)
 
-print(QDRANT_URL)
-
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL")
 
@@ -113,10 +111,3 @@ def chama_qdrant(nome_colecao: str):
         print(f"Erro ao conectar com Qdrant: {e}")
         return None
     return db
-
-if __name__ == '__main__':
-    if chama_qdrant("estoque_vetorial"):
-        bv = chama_qdrant("estoque_vetorial")
-    else:
-        cria_colecao("estoque_vetorial")
-        bv = chama_qdrant("estoque_vetorial")

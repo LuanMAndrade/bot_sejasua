@@ -5,6 +5,8 @@ from process_message.process_message import process_message
 from woocommerce import woocommerce
 import os
 
+from data_base.estoque import cria_estoque
+
 
 
 redis_client = redis.Redis(
@@ -13,6 +15,8 @@ redis_client = redis.Redis(
     password=os.getenv("REDIS_PASSWORD", None),
     decode_responses=True
 )
+
+
 
 #___________________________________________________________________________________________________________________
 

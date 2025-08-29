@@ -19,7 +19,7 @@ def init_db():
 
 
 def save_message(conversation_id, messages):
-
+    
     conn = sqlite3.connect("data_base.db")
     c = conn.cursor()
 

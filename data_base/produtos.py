@@ -30,7 +30,7 @@ def busca_atributos():
             nome = nome.lower().strip().split()
             nome = " ".join(nome[1:])
             if categoria:
-                    categoria = categoria.lower()
+                categoria = categoria.lower()
             if nome not in nomes:
                 nomes.append(nome)
             if categoria not in categorias:
@@ -49,6 +49,4 @@ def busca_atributos():
                 tamanhos.append(tamanho)
 
     return nomes, categorias, cores, tamanhos
-
-
         

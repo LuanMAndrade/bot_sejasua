@@ -117,10 +117,10 @@ async def process_message(data, redis_client):
             typing_url = EVOLUTION_PRESENCE_URL 
             tempo_digitando = len(parte)*1000/17
             
-            if tempo_digitando > 10:
-                tempo_digitando = 10
-            elif tempo_digitando < 1:
-                tempo_digitando = 1
+            if tempo_digitando > 6000:
+                tempo_digitando = 6000
+            elif tempo_digitando < 1000:
+                tempo_digitando = 1000
 
             print(f"tempo_digitando: {tempo_digitando}", flush = True)
 
