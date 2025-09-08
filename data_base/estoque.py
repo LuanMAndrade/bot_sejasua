@@ -8,7 +8,7 @@ def cria_estoque():
 
     df = pd.read_csv(documento)
     df.sort_values(by="Nome")
-    df = df.get(["ID", "Tipo", "Nome", "Categorias", "Nome do atributo 1", "Valores do atributo 1", "Nome do atributo 2", "Valores do atributo 2", "Descrição curta", "Preço", "Em estoque?", "Estoque", "Metadado: rtwpvg_images", "Imagens"])
+    df = df.get(["ID", "Tipo", "Nome", "Categorias", "Nome do atributo 1", "Valores do atributo 1", "Nome do atributo 2", "Valores do atributo 2", "Descrição curta", "Preço", "Em estoque?", "Estoque", "Metadado: rtwpvg_images", "Imagens", "Ascendente","SKU"])
     df['Nome do atributo 2'].fillna('Tamanho', inplace=True)
     df['Valores do atributo 2'].fillna('único', inplace=True)
 
@@ -24,6 +24,18 @@ def cria_estoque():
             df.loc[index, "Valores do atributo 1"] = df.loc[index, "Valores do atributo 2"]
             df.loc[index, "Valores do atributo 2"] = x
 
+        if row["Tipo"] == "variation":
+            ascendente = row["Ascendente"]
+            df.loc[index, "Descrição curta"] = df.loc[df["SKU"] == ascendente, "Descrição curta"].values[0]
+            categoria = df.loc[df["SKU"] == ascendente, "Categorias"].values[0].lower()
+            df.loc[index, "Categorias"] = categoria.split(">")[0].strip()
+
+    for index, row in df.iterrows():
+        if row["Tipo"] == "variable":
+            sku = row["SKU"]
+            df.loc[index, "Preço"] = df.loc[df["Ascendente"] == sku, "Preço"].values[0]
+            df.loc[index, "Categorias"] = df.loc[index, "Categorias"].lower().split(">")[0].strip()
+            
     conn = sqlite3.connect("data_base.db")
 
     df.to_sql("estoque", conn, if_exists="replace", index=False)

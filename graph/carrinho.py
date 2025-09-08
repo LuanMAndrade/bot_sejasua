@@ -57,6 +57,7 @@ def view_cart(user_id:Annotated[str, "Número de identificação do usuário"]):
         print(id)
         cur.execute("SELECT Nome FROM estoque WHERE ID =?", (id,))
         produto = cur.fetchall()
+        print(f"!!!!!!!!!!!!!! {produto}", flush= True)
         carrinho += f"Produto: {produto[0][0]}, Quantidade: {row[1]}\n"
     conn.close()
     return carrinho

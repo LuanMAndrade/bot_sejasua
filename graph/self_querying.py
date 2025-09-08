@@ -14,18 +14,18 @@ nomes, categorias, cores, tamanhos = busca_atributos()
 
 @tool
 def rag(query: Annotated[str, "Utiliza a query da cliente para buscar produtos relevantes no estoque."]):
-    """Realiza uma busca híbrida, utilizando busca direta e busca por contexto e retorna os produtos mais relevantes de acordo com a demanda da cliente."""
+    """Realiza uma busca híbrida, utilizando busca direta e busca por contexto. Retorna os produtos mais relevantes de acordo com a demanda da cliente.""" 
     llm = ChatOpenAI(model="gpt-5-mini")
     vectorstore = chama_qdrant("estoque_vetorial")
     metadata_field_info = [
         AttributeInfo(
             name="Cor",
-            description=f"Cor do produto. Use sempre busca parcial (contém) para este campo. Quando a cor possuir variações de escrita, por exemplo, amarelo e amarela, busque pelo radical da palavra (contém) 'amarel'",
+            description=f"Cor do produto. Um dentre estes: {cores} Use sempre busca parcial (contém) para este campo. Quando a cor possuir variações de escrita, por exemplo, amarelo e amarela, busque pelo radical da palavra (contém) 'amarel'. Sempre em lowercase ",
             type="string",
         ),
         AttributeInfo(
             name="Tamanho",
-            description=f"Tamanho do produto. Um dentre estes: p, m, g, único",
+            description=f"Tamanho do produto. Um dentre estes: p, m, g, único. Sempre em lowercase",
             type="string",
         ),
         AttributeInfo(
@@ -40,17 +40,17 @@ def rag(query: Annotated[str, "Utiliza a query da cliente para buscar produtos r
         ),
         AttributeInfo(
             name="Nome",
-            description=f"Nome do produto. Um dentre estes: {nomes}. Use sempre busca parcial (contém) para este campo. ",
+            description=f"Nome do produto. Um dentre estes: {nomes}. Use sempre busca parcial (contém) para este campo. Sempre em lowercase ",
             type="string",
         ),
         AttributeInfo(
             name="Tipo",
-            description="Tipo do produto: variation ou variable. Use variation quando a cliente estiver procurando uma variação específica. Use variable se ela estiver querendo informações gerais, por exemplo: Quais cores tem?",
+            description="Tipo do produto: variation ou variable",
             type="string",
         ),
         AttributeInfo(
-            name="Link das imagens",
-            description="links das imagens do produto",
+            name="Links_das_imagens",
+            description="link da imagem do produto. Se a query for um link, sempre procure por este filtro. Use sempre busca parcial (contém) para este campo.",
             type="string",
         ),
         AttributeInfo(
@@ -60,7 +60,7 @@ def rag(query: Annotated[str, "Utiliza a query da cliente para buscar produtos r
         ),
         AttributeInfo(
             name="Categoria",
-            description=f"Categoria do produto. Um dentre esses: {categorias}. Se a query for semelhante a algum desses nomes, atribua a ele. Por exemplo: top -> top's, short -> shorts",
+            description=f"Categoria do produto. Um dentre esses: {categorias}. Biquinis, maiôs e peças semelhantes são considerados moda praia. Sempre em lowercase. Se a query for semelhante a algum desses nomes, atribua a ele. Por exemplo: top -> top's, short -> shorts",
             type="string",
         ),
     ]
@@ -73,14 +73,29 @@ def rag(query: Annotated[str, "Utiliza a query da cliente para buscar produtos r
         metadata_field_info,
         k = 2
     )
-
+    # if query.startswith("http"):
+    #     response = vectorstore.similarity_search(
+    #         query="",
+    #         filter= {
+    #             "must": [
+    #                 {
+    #                 "key": "Links das imagens",
+    #                 "match": {
+    #                     "text": "https://sejasuamodafit.com.br"
+    #                 }
+    #                 }
+    #             ]
+    #         },
+    #     )
+    # else:
     response = retriever.invoke(query)
+
+    
     lista_respostas = []
 
     for doc in response:
         metadados = doc.metadata
-        descricao_json = json.loads(doc.page_content)
-        descricao = descricao_json.get("Descrição", "")
+        descricao = json.loads(doc.page_content)
         resposta = f"id: {metadados.get("id")}, Nome: {metadados.get("Nome")}\n'Categoria': {metadados.get("Categoria")}, Tamanho: {metadados.get('Tamanho')} Cor: {metadados.get("Cor")}, Estoque: {metadados.get("Estoque")}, Links das imagens:{metadados.get("Links das imagens")} Preço: {metadados.get("Preço")}\nDescrição: {descricao}"
         lista_respostas.append(resposta)
         print(resposta)

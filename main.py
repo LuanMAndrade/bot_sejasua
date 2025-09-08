@@ -34,9 +34,10 @@ async def whatsapp(request: Request):
     
 
 @app.post("/erp")
-async def woocommerce(request: Request): 
+async def woocommerce_webhook(request: Request):
     data = await request.json()
-    await woocommerce(data)
+    print(data)
+    asyncio.create_task(woocommerce(data))
     return {"status": "ok"}
     
 

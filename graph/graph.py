@@ -48,25 +48,26 @@ def roteador(state: AgentState, config: RunnableConfig):
         Você tem acesso às ferramentas abaixo. Use-as sempre que necessário.
 
         <Ferramentas>
-        1. rag - Busca até 4 produtos mais relevantes no estoque.
+        1. rag - Busca produtos mais relevantes no estoque.
         - Se não encontrar nada, diga à cliente que não temos o produto.
         - Se encontrar, mas a cliente quiser mais opções, acrescente ao final da query "diferente de nome_do_produto1 e nome_do_produto2.
         - Se a cliente pedir qualquer informação sobre uma foto que já foi enviada anteriormente na conversa, procure no estoque o produto pelo link da imagem
-        2. pagamento - Use quando a cliente demonstrar intenção clara de finalizar a compra. Gera link de pagamento.
-        3. informacoes - Responde perguntas sobre a loja (ex.: horário de funcionamento, entrega etc.).
+        2. pagamento - Use quando a cliente demonstrar intenção clara de finalizar a compra.
+        3. informacoes - Trás informações sobre a loja (ex.: horário de funcionamento, entrega, etc.).
         4. nao_entendi - Use quando não entender a solicitação da cliente.
-        5. add_to_cart - Adiciona o produto de interesse da cliente ao carrinho. Só ative se tiver os parametros necessários, nunca invente.
-        6. remove_from_cart - Retira o produto de interesse da cliente ao carrinho.
-        7. view_cart - Verifica os produtos de interesse da cliente no carrinho antes de fechar o pedido
+        5. add_to_cart - Adiciona o produto de interesse da cliente ao carrinho. Antes de adicionar ao carrinho utilize a ferramenta rag e confirme o ID do produto.
+        6. remove_from_cart - Retira o produto de interesse da cliente ao carrinho. Antes de remover do carrinho utilize a ferramenta view_cart e confirme o ID do produto.
+        7. view_cart - Verifica os produtos do carrinho.
         </Ferramentas>
 
         1. Quando a cliente definir o produto que ela quer, adicione ele ao carrinho.
         2. Antes de finalizar o pagamento, verifique os produtos do carrinho.
+        3. Quando a cliente definir o produto que ela quer, adicione ele ao carrinho e ofereça a ela outro produto que combine com esse.
 
-        # Saída esperada se não estiver chamando uma ferramenta
-        <saída>
+        # Saída esperada se não estiver chamando uma ferramenta #
+        <output>
         ""
-        </saída>
+        </output>
         """
     
     prompt_template = ChatPromptTemplate.from_messages([
@@ -91,7 +92,7 @@ def roteador(state: AgentState, config: RunnableConfig):
 
 def formatador(state: AgentState, config: RunnableConfig):
 
-    model = ChatOpenAI(model="gpt-5")
+    model = ChatOpenAI(model="gpt-4.1")
 
     conversation_id = config.get("configurable", {}).get("conversation_id", "default") ##
     history = get_history(conversation_id) ##
@@ -114,12 +115,11 @@ def formatador(state: AgentState, config: RunnableConfig):
 
         # Técnicas de venda #
         1. Não diga que separou o pedido antes do pagamento.
-        2. Não force a finalização. Só ofereça enviar o link de pagamento quando houver interesse claro do cliente em finalizar.
+        2. Não force a finalização da venda.
         3. Tire o máximo de dúvidas antes de finalizar.
         4. Sempre que fizer sentido, envie o link da imagem do produto de interesse. Cada link deve ir isolado em sua própria fração de mensagem (ver seção de formatação).
         5. Quando a cliente definir o produto que ela quer, adicione ele ao carrinho e ofereça a ela outro produto que combine com esse.
-        6. Quando for finalizar para o pagamento, verifique os produtos do carrinho.
-        7. Só envie preço quando solicitado.
+        6. Só envie preço quando solicitado.
 
         # Modo de falar #
 
@@ -163,7 +163,6 @@ def formatador(state: AgentState, config: RunnableConfig):
     
     prompt_template = ChatPromptTemplate(
     input_variables=["history", "current_messages", "sys_prompt"],
-    # partial_variables={"format_instructions": parser.get_format_instructions()},
     messages=[
         ("system", sys_prompt),
         MessagesPlaceholder(variable_name="history"),
@@ -186,7 +185,10 @@ def formatador(state: AgentState, config: RunnableConfig):
 def should_continue(state):
     messages = state["messages"]
     last_message = messages[-1]
-    if not last_message.tool_calls or state["remaining_steps"] <=19:
+    if state["remaining_steps"] <=19:
+        state["messages"].append(AIMessage(content=""))
+        return "formatador"
+    elif not last_message.tool_calls:
         return "formatador"
     else:
         return "no_ferramenta"
@@ -211,5 +213,3 @@ def build_chat_graph():
     workflow.add_edge("save", END)
 
     return workflow.compile()
-
-

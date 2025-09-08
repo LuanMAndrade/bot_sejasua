@@ -8,6 +8,7 @@ from langchain_community.vectorstores import Chroma
 from langchain_openai import OpenAIEmbeddings
 import json
 from qdrant_client import QdrantClient
+import pandas as pd
 
 load_dotenv()
 
@@ -29,9 +30,7 @@ def busca_db():
     ID,
     Nome,
     Categorias,
-    "Nome do atributo 1", 
     "Valores do atributo 1", 
-    "Nome do atributo 2", 
     "Valores do atributo 2",               
     "Descrição curta", 
     Preço, 
@@ -45,51 +44,70 @@ def busca_db():
     print("Buscou no banco de dados de estoque")
     return cursor.fetchall()
 
-def cria_documento(linhas):
-    documentos = []
-    descricao_geral = ""
-    counter = False
-    variacoes = []
-    for id_, nome, categoria, nome_do_atributo_1, valores_do_atributo_1, nome_do_atributo_2, valores_do_atributo_2, descricao, preco, estoque, imagens, imagem_principal, tipo in linhas:
-        if tipo == "variable":
-            if counter == True:
-                texto = ""
-                for variacao in variacoes:
-                    texto += f"\n{variacao}"
-                conteudo = {'Descrição': (descricao_geral if descricao_geral else "") + "variações:" + texto}
-                documento_atual = Document(page_content=json.dumps(conteudo, ensure_ascii=False), metadata={'Tipo': tipo, 'Nome': nome_geral, 'Categoria': categoria_geral,'Preço': preco, 'Link das imagens': imagem_principal_geral})
-                documentos.append(documento_atual)
-                variacoes = []
-        if nome:
-            nome = nome.lower()
-        if valores_do_atributo_1:
-            valores_do_atributo_1 = valores_do_atributo_1.lower()
-        if valores_do_atributo_2:
-            valores_do_atributo_2 = valores_do_atributo_2.lower()
-        if categoria:
-            categoria = categoria.lower()
-        if tipo == "variable":
-            descricao_geral = descricao
-            categoria_geral = categoria
-            nome_geral = nome
-            imagem_principal_geral = imagem_principal
-            counter = True
-        elif tipo == "variation":
-            conteudo = {'Descrição': descricao_geral}
-            nome = nome.split("-")[0].strip()
-            documento_atual = Document(page_content=json.dumps(conteudo, ensure_ascii=False), metadata={"id": id_,'Tipo': tipo, 'Nome': nome, 'Categoria': categoria_geral, f'{nome_do_atributo_1}': valores_do_atributo_1, f'{nome_do_atributo_2}': valores_do_atributo_2, 'Estoque': estoque, 'Preço': preco, 'Links das imagens': imagens})
-            documentos.append(documento_atual)
-            variacoes.append(f"({nome_do_atributo_1}: {valores_do_atributo_1}, {nome_do_atributo_2}: {valores_do_atributo_2}, Estoque: {estoque})")
-        else:
-            print("Algo de errado aconteceu")
+def cria_documento():
+    conn = sqlite3.connect("data_base.db")
+    df = pd.read_sql_query("""
+    SELECT 
+    ID,
+    Nome,
+    Categorias,
+    Preço,
+    "Metadado: rtwpvg_images",
+    Imagens,
+    "Descrição curta",
+    Ascendente,
+    SKU,
+    Estoque,
+    "Valores do atributo 1", 
+    "Valores do atributo 2",
+    Tipo            
+    FROM estoque
+    """, conn)
 
-    print("Criou docs")
-    
+    documentos = []
+    for index, row in df.iterrows():
+        if row["Tipo"] == "variable":
+                sku = row["SKU"]
+                cores = df.loc[df["Ascendente"] == sku, "Valores do atributo 1"].values
+                tamanhos = df.loc[df["Ascendente"] == sku, "Valores do atributo 2"].values
+                estoques = df.loc[df["Ascendente"] == sku, "Estoque"].values
+                descricao = str(row["Descrição curta"]) + "\nOutras variações deste produto:"
+                for cor, tamanho, estoque in zip(cores, tamanhos, estoques):
+                    descricao += "\nCor: " +str(cor.strip()) +", Tamanho: " + str(tamanho.strip()) + ", Estoque: " + str(estoque)
+                df.loc[index, "Descrição curta"] = descricao
+
+    for index, row in df.iterrows():
+        if row["Tipo"] == "variation":
+            ascendente = row["Ascendente"]
+            row["Descrição curta"] = df.loc[df["SKU"] == ascendente, "Descrição curta"].values[0]
+
+        descricao = row["Descrição curta"]
+        id_ = row["ID"]
+        nome = row["Nome"]
+        categoria = row["Categorias"]
+        valores_do_atributo_1 = row["Valores do atributo 1"]
+        valores_do_atributo_2 = row["Valores do atributo 2"]
+        preco = row["Preço"]
+        estoque = row["Estoque"]
+        imagens = row["Metadado: rtwpvg_images"]
+        tipo = row["Tipo"]
+        documento_atual = Document(page_content=json.dumps(descricao, ensure_ascii=False), metadata={"id": id_,'Tipo': tipo, 'Nome': nome, 'Categoria': categoria, "Cor": valores_do_atributo_1, "Tamanho": valores_do_atributo_2, 'Estoque': estoque, 'Preço': preco, 'Links_das_imagens': imagens})
+        documentos.append(documento_atual)
+
     return documentos
+
+# def cria_documento(linhas):
+#     documentos = []
+#     for id_, nome, categoria, valores_do_atributo_1, valores_do_atributo_2, descricao, preco, estoque, imagens, imagem_principal, tipo in linhas:
+#             documento_atual = Document(page_content=json.dumps(descricao, ensure_ascii=False), metadata={"id": id_,'Tipo': tipo, 'Nome': nome, 'Categoria': categoria, "Cor": valores_do_atributo_1, "Tamanho": valores_do_atributo_2, 'Estoque': estoque, 'Preço': preco, 'Links_das_imagens': imagens})
+#             documentos.append(documento_atual)
+#     print("Criou docs")
+    
+#     return documentos
 
 def cria_colecao(nome_colecao: str):
     linhas = busca_db()
-    documentos = cria_documento(linhas)
+    documentos = cria_documento()
     embedding_model = OpenAIEmbeddings(model=EMBEDDING_MODEL)
     
     QdrantVectorStore.from_documents(
@@ -111,3 +129,8 @@ def chama_qdrant(nome_colecao: str):
         print(f"Erro ao conectar com Qdrant: {e}")
         return None
     return db
+
+if __name__ == "__main__":
+    client = QdrantClient(url=QDRANT_URL)
+    client.delete_collection("estoque_vetorial")
+    cria_colecao("estoque_vetorial")

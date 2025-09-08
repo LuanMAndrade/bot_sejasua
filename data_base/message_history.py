@@ -45,7 +45,7 @@ def save_message(conversation_id, messages):
             FROM messages
             WHERE conversation_id = ?
             ORDER BY id DESC
-            LIMIT 10
+            LIMIT 6
         )
     )
 """, (conversation_id, conversation_id))

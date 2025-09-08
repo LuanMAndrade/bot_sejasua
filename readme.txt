@@ -9,16 +9,18 @@ Funcionalidades do robô
 •	Recebe mensagens fracionadas
 •	Envia mensagens fracionadas
 •	Recebe áudio
-•	Pausa quando humano assumir
-•	Aparece o “digitando”
-•	Sabe todas as informações do estoque
-•	Monta carrinho
+•	Entende quando uma mensagem anterior é referenciada
+•	Pausa quando humano assumir o atendimento
+•	Aparece o “digitando” antes de enviar a mensagem
+•	Sabe todas as informações do estoque e responde baseada nele
+•	Atualiza o estoque em tempo real
+•	Monta carrinho de desejos enquanto atende
 •	Faz sugestões de produtos baseado no interesse do cliente
-•	Tem conhecimento das informações da empresa
+•	Tem conhecimento das informações da empresa (Horarios, endereço, formas de pagamento, etc)
 •	Atendimento humanizado
 •	Envia imagens
-•	Quando não souber responder envia mensagem no whatsapp pessoal do dono
-•	Quando identificar pagamento envia mensagem no whatsapp pessoal do dono para finalizar
+•	Quando não souber responder envia mensagem no whatsapp pessoal do dono para que este assuma o atendimento
+•	Quando identifica intenção de pagamento envia mensagem no whatsapp pessoal do dono para finalizar
 
 O que pedir ao cliente
 •	Informações da loja
