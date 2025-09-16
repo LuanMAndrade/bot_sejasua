@@ -1,6 +1,9 @@
 import sqlite3
 import pandas as pd
 from pathlib import Path
+from qdrant_client import QdrantClient
+
+from data_base.qdrant import cria_colecao
 
 def cria_estoque():
     BASE_DIR = Path(__file__).resolve().parent.parent
@@ -35,7 +38,7 @@ def cria_estoque():
             sku = row["SKU"]
             df.loc[index, "Preço"] = df.loc[df["Ascendente"] == sku, "Preço"].values[0]
             df.loc[index, "Categorias"] = df.loc[index, "Categorias"].lower().split(">")[0].strip()
-            
+
     conn = sqlite3.connect("data_base.db")
 
     df.to_sql("estoque", conn, if_exists="replace", index=False)
@@ -44,3 +47,6 @@ def cria_estoque():
 
 if __name__ == '__main__':
     cria_estoque()
+    client = QdrantClient(url=QDRANT_URL)
+    client.delete_collection("estoque_vetorial")
+    cria_colecao("estoque_vetorial")

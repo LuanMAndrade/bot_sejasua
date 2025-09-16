@@ -73,21 +73,7 @@ def rag(query: Annotated[str, "Utiliza a query da cliente para buscar produtos r
         metadata_field_info,
         k = 2
     )
-    # if query.startswith("http"):
-    #     response = vectorstore.similarity_search(
-    #         query="",
-    #         filter= {
-    #             "must": [
-    #                 {
-    #                 "key": "Links das imagens",
-    #                 "match": {
-    #                     "text": "https://sejasuamodafit.com.br"
-    #                 }
-    #                 }
-    #             ]
-    #         },
-    #     )
-    # else:
+    
     response = retriever.invoke(query)
 
     

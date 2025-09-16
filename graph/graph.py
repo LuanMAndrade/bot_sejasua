@@ -181,17 +181,25 @@ def formatador(state: AgentState, config: RunnableConfig):
     
     return {"messages": [resposta]}
 
+def vazio(state: AgentState, config: RunnableConfig):
+    return {"messages": [AIMessage(content="")]}  # Retorna uma mensagem vazia
+
 
 def should_continue(state):
     messages = state["messages"]
     last_message = messages[-1]
-    if state["remaining_steps"] <=19:
-        state["messages"].append(AIMessage(content=""))
-        return "formatador"
-    elif not last_message.tool_calls:
+    
+    if not last_message.tool_calls:
         return "formatador"
     else:
         return "no_ferramenta"
+
+def limit_steps(state):
+    if state["remaining_steps"] <= 8:
+        return "formatador"
+    else:
+        return "roteador"
+
     
 def save(state, config):
     conversation_id = config.get("configurable", {}).get("conversation_id", "default")
@@ -205,10 +213,11 @@ def build_chat_graph():
     workflow.add_node("formatador", formatador)
     workflow.add_node("no_ferramenta", ToolNode(tools))
     workflow.add_node("save", save)
+    workflow.add_node("limitador", limit_steps)
 
     workflow.add_edge(START, "roteador")
     workflow.add_conditional_edges("roteador", should_continue)
-    workflow.add_edge("no_ferramenta", "roteador")
+    workflow.add_edge("no_ferramenta", "limitador")
     workflow.add_edge("formatador", "save")
     workflow.add_edge("save", END)
 
